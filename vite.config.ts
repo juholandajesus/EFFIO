@@ -15,6 +15,12 @@ export default defineConfig({
     },
     dedupe: ["react", "react-dom"],
   },
+  // Analisa todas as páginas na inicialização, para o Vite não precisar
+  // reotimizar dependências (e recarregar a página) no meio do uso — isso
+  // acontecia no StackBlitz ao abrir telas novas pela primeira vez.
+  optimizeDeps: {
+    entries: ["index.html", "src/**/*.{ts,tsx}"],
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

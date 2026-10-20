@@ -44,8 +44,13 @@ export default function Login() {
       }
       login(data.token, data.refresh_token, data.usuario, data.empresa);
       setLocation("/dashboard");
-    } catch {
-      toast({ title: "Erro de conexão", description: "Tente novamente.", variant: "destructive" });
+    } catch (err) {
+      console.error("[EFFIO] falha na requisição:", err);
+      toast({
+        title: "Erro de conexão",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

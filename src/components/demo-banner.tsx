@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FlaskConical, X } from "lucide-react";
 import { isDemoMode } from "@/lib/api-base";
 import { DEMO_EMAIL, DEMO_SENHA } from "@/mock/seed";
+import { resetDemoDb } from "@/mock/server";
 
 /** Aviso discreto de que o app está usando dados de demonstração. */
 export function DemoBanner() {
@@ -19,8 +20,7 @@ export function DemoBanner() {
     );
   }
 
-  async function resetar() {
-    const { resetDemoDb } = await import("@/mock/server");
+  function resetar() {
     resetDemoDb();
     try {
       ["effio_token", "effio_refresh", "effio_user", "effio_empresa"].forEach((k) => localStorage.removeItem(k));

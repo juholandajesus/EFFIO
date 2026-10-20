@@ -57,8 +57,13 @@ export default function Cadastro() {
       login(data.token, data.refresh_token, data.usuario, data.empresa);
       toast({ title: "Conta criada com sucesso!", description: `Bem-vindo, ${data.usuario.nome}!` });
       setLocation("/dashboard");
-    } catch {
-      toast({ title: "Erro de conexão", description: "Tente novamente.", variant: "destructive" });
+    } catch (err) {
+      console.error("[EFFIO] falha na requisição:", err);
+      toast({
+        title: "Erro de conexão",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
