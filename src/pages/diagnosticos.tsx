@@ -25,7 +25,7 @@ export default function Diagnosticos() {
     switch (tipo) {
       case 'pico_consumo': return <TrendingUp className="h-5 w-5 text-primary" />;
       case 'pico_custo': return <AlertTriangle className="h-5 w-5 text-destructive" />;
-      case 'submercado_critico': return <Factory className="h-5 w-5 text-secondary" />;
+      case 'submercado_critico': return <Factory className="h-5 w-5 text-primary" />;
       case 'operacao_principal': return <Activity className="h-5 w-5 text-blue-500" />;
       default: return <Zap className="h-5 w-5 text-primary" />;
     }

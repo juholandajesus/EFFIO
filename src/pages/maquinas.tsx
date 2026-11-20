@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Cpu, Plus, Pencil, Trash2, Clock, Zap } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +28,9 @@ interface Maquina {
 
 const DIAS = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
 const STATUS_COLORS: Record<string, string> = {
-  ativo: "bg-green-100 text-green-800",
-  inativo: "bg-gray-100 text-gray-600",
-  manutencao: "bg-yellow-100 text-yellow-800",
+  ativo: "bg-green-500/15 text-green-300",
+  inativo: "bg-muted text-muted-foreground",
+  manutencao: "bg-yellow-500/15 text-yellow-300",
 };
 
 const emptyForm = {
@@ -130,9 +130,6 @@ export default function Maquinas() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-purple-100 p-2 rounded-lg">
-            <Cpu className="h-6 w-6 text-purple-600" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Máquinas</h1>
             <p className="text-sm text-muted-foreground">Cadastro e gestão de equipamentos por setor</p>

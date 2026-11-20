@@ -101,9 +101,6 @@ export default function Contrato() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-green-100 p-2 rounded-lg">
-            <FileText className="h-6 w-6 text-green-600" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Contrato de Energia</h1>
             <p className="text-sm text-muted-foreground">Parâmetros contratuais do Mercado Livre</p>
@@ -198,7 +195,7 @@ export default function Contrato() {
       ) : contrato ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Preço MWh", value: fmt(contrato.preco_mwh, "R$ "), color: "text-amber-600" },
+            { label: "Preço MWh", value: fmt(contrato.preco_mwh, "R$ "), color: "text-amber-400" },
             { label: "Flexibilidade", value: `${contrato.flexibilidade_pct}%`, color: "" },
             { label: "Demanda Ponta", value: `${fmt(contrato.demanda_ponta_kw)} kW`, color: "" },
             { label: "Demanda Fora Ponta", value: `${fmt(contrato.demanda_fora_ponta_kw)} kW`, color: "" },
@@ -214,8 +211,8 @@ export default function Contrato() {
             <CardContent className="pt-5 pb-5 flex gap-3 flex-wrap">
               <Badge variant="secondary">{contrato.modalidade_tarifaria}</Badge>
               <Badge variant="secondary">{contrato.tipo_energia}</Badge>
-              {contrato.possui_irec && <Badge className="bg-green-100 text-green-800 hover:bg-green-100">I-REC</Badge>}
-              {contrato.meta_esg_pct && <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">ESG {contrato.meta_esg_pct}%</Badge>}
+              {contrato.possui_irec && <Badge className="bg-green-500/15 text-green-300 hover:bg-green-500/15">I-REC</Badge>}
+              {contrato.meta_esg_pct && <Badge className="bg-blue-500/15 text-blue-300 hover:bg-blue-500/15">ESG {contrato.meta_esg_pct}%</Badge>}
             </CardContent>
           </Card>
         </div>

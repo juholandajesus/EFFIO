@@ -1,3 +1,4 @@
+import { SERIES, GRID, MUTED_INK, TOOLTIP } from "@/industry/ui";
 import { useState } from "react";
 import { appLocale } from "@/i18n";
 import { useGetDashboard, getGetDashboardQueryKey, useListEmpresas, getListEmpresasQueryKey } from "@workspace/api-client-react";
@@ -21,7 +22,7 @@ import {
   Line,
 } from "recharts";
 
-const COLORS = ['#F59E0B', '#EA580C', '#D97706', '#C2410C', '#B45309'];
+const COLORS = SERIES;
 
 export default function Dashboard() {
   const [empresaId, setEmpresaId] = useState<string>("all");
@@ -85,10 +86,10 @@ export default function Dashboard() {
             <Card className="border-l-4 border-l-secondary shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Custo Total</CardTitle>
-                <DollarSign className="h-4 w-4 text-secondary" />
+                <DollarSign className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-secondary" data-testid="kpi-custo">{formatCurrency(dashboard.kpis.total_custo)}</div>
+                <div className="text-2xl font-bold text-primary" data-testid="kpi-custo">{formatCurrency(dashboard.kpis.total_custo)}</div>
                 <p className="text-xs text-muted-foreground mt-1">Baseado em preços PLD</p>
               </CardContent>
             </Card>
@@ -124,15 +125,15 @@ export default function Dashboard() {
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={dashboard.serie_temporal} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="data" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MWh`} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
+                    <XAxis dataKey="data" stroke={MUTED_INK} fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke={MUTED_INK} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MWh`} />
                     <Tooltip 
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      {...TOOLTIP}
                       formatter={(value: number) => [`${formatNumber(value)} MWh`, 'Consumo']}
                       labelFormatter={(label) => `Data: ${label}`}
                     />
-                    <Line type="monotone" dataKey="montante_mwh" stroke="#F59E0B" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#F59E0B", stroke: "#fff", strokeWidth: 2 }} />
+                    <Line type="monotone" dataKey="montante_mwh" stroke="#f5a524" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: "#f5a524", stroke: "#11171d", strokeWidth: 2 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -161,7 +162,7 @@ export default function Dashboard() {
                     </Pie>
                     <Tooltip 
                       formatter={(value: number) => [`${formatNumber(value)} MWh`, 'Consumo']}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      {...TOOLTIP}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -175,15 +176,14 @@ export default function Dashboard() {
               <CardContent className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dashboard.por_submercado} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="submercado" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID} />
+                    <XAxis dataKey="submercado" stroke={MUTED_INK} fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke={MUTED_INK} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
                     <Tooltip 
-                      cursor={{ fill: 'transparent' }}
-                      formatter={(value: number) => [`${formatNumber(value)} MWh`, 'Consumo']}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            formatter={(value: number) => [`${formatNumber(value)} MWh`, 'Consumo']}
+                      {...TOOLTIP}
                     />
-                    <Bar dataKey="montante_mwh" fill="#EA580C" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                    <Bar dataKey="montante_mwh" fill="#f5a524" radius={[4, 4, 0, 0]} maxBarSize={60} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

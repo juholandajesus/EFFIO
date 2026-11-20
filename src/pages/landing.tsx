@@ -107,7 +107,7 @@ export default function Landing() {
         <StrikeCurve values={week.values} hotspots={hotspots} narrow={narrow} />
         <div className="pointer-events-none absolute left-0 top-0 hidden h-[60%] w-1/2 bg-gradient-to-r from-[#090c10]/70 to-transparent md:block" />
         <div className="relative z-10 max-w-3xl px-[4%] pt-[15vh] md:pt-[16vh]">
-          <h1 className="cn-hero-title cn-reveal cn-late">
+          <h1 className={`cn-hero-title cn-reveal cn-late ${lang === "en" ? "is-long" : ""}`}>
             <span><span>{t("cine.h1a")}</span></span>
             <span><span><b>{t("cine.h1b")}</b></span></span>
           </h1>

@@ -6,16 +6,16 @@ import { useListBessUnidades, getListBessUnidadesQueryKey } from "@workspace/api
 import { Badge } from "@/components/ui/badge";
 
 const STATUS_COLORS: Record<string, string> = {
-  "Integrado": "bg-green-100 text-green-800 border-green-200",
-  "Em análise": "bg-amber-100 text-amber-800 border-amber-200",
-  "Não integrado": "bg-gray-100 text-gray-600 border-gray-200",
+  "Integrado": "bg-green-500/15 text-green-300 border-green-500/30",
+  "Em análise": "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  "Não integrado": "bg-muted text-muted-foreground border-border",
 };
 
 const MOCK_METRICS = [
-  { label: "SOC Médio", value: "87%", icon: BatteryCharging, color: "text-green-600", bg: "bg-green-50" },
-  { label: "SOH Médio", value: "94%", icon: Activity, color: "text-blue-600", bg: "bg-blue-50" },
-  { label: "Temperatura Média", value: "32°C", icon: Thermometer, color: "text-orange-600", bg: "bg-orange-50" },
-  { label: "Potência Ativa", value: "1.2 MW", icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+  { label: "SOC Médio", value: "87%", icon: BatteryCharging, color: "text-green-400", bg: "bg-green-500/10" },
+  { label: "SOH Médio", value: "94%", icon: Activity, color: "text-blue-400", bg: "bg-blue-500/10" },
+  { label: "Temperatura Média", value: "32°C", icon: Thermometer, color: "text-orange-400", bg: "bg-orange-500/10" },
+  { label: "Potência Ativa", value: "1.2 MW", icon: Zap, color: "text-amber-400", bg: "bg-amber-500/10" },
 ];
 
 export default function DashboardBess() {
@@ -34,9 +34,6 @@ export default function DashboardBess() {
     <PlanoGuard requires="bess">
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <BatteryCharging className="h-6 w-6 text-primary" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Dashboard BESS</h1>
             <p className="text-sm text-muted-foreground">
@@ -65,30 +62,30 @@ export default function DashboardBess() {
 
         {/* Status das unidades */}
         <div className="grid grid-cols-3 gap-4">
-          <Card className="border-green-200">
+          <Card className="border-green-500/30">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-green-700">Integradas</CardTitle>
+              <CardTitle className="text-sm font-medium text-green-300">Integradas</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-green-700">{integradas.length}</p>
+              <p className="text-3xl font-bold text-green-300">{integradas.length}</p>
               <p className="text-xs text-muted-foreground mt-1">unidades ativas</p>
             </CardContent>
           </Card>
-          <Card className="border-amber-200">
+          <Card className="border-amber-500/30">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-amber-700">Em Análise</CardTitle>
+              <CardTitle className="text-sm font-medium text-amber-300">Em Análise</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-amber-700">{emAnalise.length}</p>
+              <p className="text-3xl font-bold text-amber-300">{emAnalise.length}</p>
               <p className="text-xs text-muted-foreground mt-1">em configuração</p>
             </CardContent>
           </Card>
-          <Card className="border-gray-200">
+          <Card className="border-border">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Não Integradas</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Não Integradas</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-gray-600">{naoIntegradas.length}</p>
+              <p className="text-3xl font-bold text-muted-foreground">{naoIntegradas.length}</p>
               <p className="text-xs text-muted-foreground mt-1">aguardando integração</p>
             </CardContent>
           </Card>
@@ -126,7 +123,7 @@ export default function DashboardBess() {
                     </div>
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
-                        STATUS_COLORS[bess.status_integracao] ?? "bg-gray-100 text-gray-600"
+                        STATUS_COLORS[bess.status_integracao] ?? "bg-muted text-muted-foreground"
                       }`}
                     >
                       {bess.status_integracao}
@@ -138,10 +135,10 @@ export default function DashboardBess() {
           </CardContent>
         </Card>
 
-        <Card className="border-dashed border-amber-300 bg-amber-50/50">
+        <Card className="border-dashed border-amber-500/30 bg-amber-500/5">
           <CardContent className="flex items-center gap-3 pt-4 pb-4">
             <TrendingUp className="h-5 w-5 text-amber-500 flex-shrink-0" />
-            <p className="text-sm text-amber-700">
+            <p className="text-sm text-amber-300">
               <strong>Telemetria em tempo real</strong> — Gráficos de SOC, temperatura e potência ativa com dados ao vivo serão disponibilizados em breve após integração dos gateways IoT.
             </p>
           </CardContent>

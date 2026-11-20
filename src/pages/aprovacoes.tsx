@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { appLocale } from "@/i18n";
-import { UserCheck, CheckCircle, XCircle, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -89,9 +89,6 @@ export default function Aprovacoes() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="bg-amber-100 p-2 rounded-lg">
-          <UserCheck className="h-6 w-6 text-amber-600" />
-        </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Aprovações de Colaboradores</h1>
           <p className="text-sm text-muted-foreground">Gerencie os pedidos de acesso pendentes</p>
@@ -99,9 +96,9 @@ export default function Aprovacoes() {
       </div>
 
       {pendentes.length > 0 && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <Clock className="h-4 w-4 text-amber-600" />
-          <p className="text-sm text-amber-800 font-medium">{pendentes.length} {pendentes.length > 1 ? "colaboradores aguardando aprovação" : "colaborador aguardando aprovação"}</p>
+        <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+          <Clock className="h-4 w-4 text-amber-400" />
+          <p className="text-sm text-amber-300 font-medium">{pendentes.length} {pendentes.length > 1 ? "colaboradores aguardando aprovação" : "colaborador aguardando aprovação"}</p>
         </div>
       )}
 

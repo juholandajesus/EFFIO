@@ -17,9 +17,9 @@ const PLANO_LABELS: Record<string, string> = {
 };
 
 const PLANO_COLORS: Record<string, string> = {
-  mercado_livre: "text-amber-600",
-  bess: "text-blue-600",
-  completo: "text-emerald-600",
+  mercado_livre: "text-amber-400",
+  bess: "text-blue-400",
+  completo: "text-emerald-400",
 };
 
 export function EmpresaSelector() {
@@ -39,14 +39,14 @@ export function EmpresaSelector() {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+    <div className="flex min-w-0 items-center gap-2">
+      <Building2 className="hidden h-4 w-4 flex-shrink-0 text-muted-foreground sm:block" />
       <Select
         value={empresaAtiva ? String(empresaAtiva.id) : "__none__"}
         onValueChange={handleChange}
       >
         <SelectTrigger
-          className="w-[240px] h-8 text-sm border-dashed"
+          className="h-8 w-[240px] min-w-0 max-w-full text-sm border-dashed"
           data-testid="empresa-selector"
         >
           <SelectValue placeholder={t("sel.placeholder")} />

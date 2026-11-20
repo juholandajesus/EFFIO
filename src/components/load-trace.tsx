@@ -131,7 +131,7 @@ export function LoadTrace({ empresaId = 1, compact = false, callouts }: { empres
       {/* the spark is HTML so it stays round when the SVG stretches */}
       {head && progress > 0 && (
         <span
-          className="vt-spark pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
+          className="vt-spark pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card"
           style={{ left: `${(head[0] / W) * 100}%`, top: `${(head[1] / H) * 100}%` }}
         />
       )}

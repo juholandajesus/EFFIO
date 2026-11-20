@@ -197,8 +197,8 @@ export default function UploadCsv() {
           )}
 
           {result && (
-            <Alert className={`mt-6 ${result.status === 'sucesso' ? 'border-green-500/50 bg-green-50/50' : 'border-amber-500/50 bg-amber-50/50'}`}>
-              {result.status === 'sucesso' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4 text-amber-600" />}
+            <Alert className={`mt-6 ${result.status === 'sucesso' ? 'border-green-500/50 bg-green-500/5' : 'border-amber-500/50 bg-amber-500/5'}`}>
+              {result.status === 'sucesso' ? <CheckCircle2 className="h-4 w-4 text-green-400" /> : <AlertCircle className="h-4 w-4 text-amber-400" />}
               <AlertTitle className="flex items-center gap-2">
                 Processamento Concluído
                 <Badge variant={result.status === 'sucesso' ? 'default' : 'secondary'} className={result.status === 'sucesso' ? 'bg-green-600 hover:bg-green-700' : ''}>

@@ -61,9 +61,9 @@ const PLANO_OPTIONS = [
 ] as const;
 
 const PLANO_COLORS: Record<string, string> = {
-  mercado_livre: "bg-amber-100 text-amber-800 border-amber-200",
-  bess: "bg-blue-100 text-blue-800 border-blue-200",
-  completo: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  mercado_livre: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  bess: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  completo: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
 };
 
 const empresaSchema = z.object({
@@ -354,7 +354,7 @@ export default function Empresas() {
                   </TableCell>
                   <TableCell>{empresa.cnpj}</TableCell>
                   <TableCell>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${PLANO_COLORS[empresa.tipo_plano] ?? "bg-gray-100 text-gray-600"}`}>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${PLANO_COLORS[empresa.tipo_plano] ?? "bg-muted text-muted-foreground"}`}>
                       {PLANO_OPTIONS.find((p) => p.value === empresa.tipo_plano)?.label ?? empresa.tipo_plano}
                     </span>
                   </TableCell>

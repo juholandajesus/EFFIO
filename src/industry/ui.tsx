@@ -4,13 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useT } from "@/i18n";
 
 /** Validated categorical order (fixed, never cycled) + reserved status colors. */
-export const SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
+export const SERIES = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#0ca30c", "#9085e9", "#e66767"];
 export const STATUS = { good: "#0ca30c", warning: "#fab219", serious: "#ec835a", critical: "#d03b3b" };
-export const GRID = "#e7e5e4";
-export const AXIS = { stroke: "#78716c", fontSize: 12, tickLine: false, axisLine: false } as const;
+export const GRID = "#1e262f";
+/** quiet tint of series 1, for ranges and runner-up bars */
+export const SERIES_SOFT = "#1d3a5c";
+export const MUTED_INK = "#8a97a3";
+export const AXIS = { stroke: MUTED_INK, fontSize: 12, tickLine: false, axisLine: false } as const;
 export const TOOLTIP = {
-  contentStyle: { borderRadius: 8, border: "1px solid #e7e5e4", boxShadow: "0 4px 12px rgb(0 0 0 / 0.08)", fontSize: 12 },
-  cursor: { fill: "rgba(120,113,108,0.08)" },
+  contentStyle: { borderRadius: 8, border: "1px solid #24303b", background: "#11171d", color: "#edf1f4", boxShadow: "0 8px 24px rgb(0 0 0 / 0.5)", fontSize: 12 },
+  labelStyle: { color: "#8a97a3" },
+  itemStyle: { color: "#edf1f4" },
+  cursor: { fill: "rgba(255,255,255,0.04)" },
 };
 
 export function PageHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {

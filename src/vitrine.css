@@ -336,3 +336,60 @@
   --sidebar-accent-foreground: 204 20% 96%;
   color-scheme: dark;
 }
+
+/* ───────────── The app interior, in the same night ───────────── */
+.app-topbar {
+  background: rgba(9, 12, 16, 0.72);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* page titles: the brand's wide cut, light, with a current that runs under it once */
+.app-page h1 {
+  font-stretch: 122%;
+  font-weight: 300;
+  font-size: clamp(1.9rem, 2.7vw, 2.7rem);
+  line-height: 1.05;
+  letter-spacing: -0.028em;
+}
+.app-page h1::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 2px;
+  margin-top: 0.85rem;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(245, 165, 36, 0.15), #f5a524 70%, #fff1cf);
+  box-shadow: 0 0 12px rgba(245, 165, 36, 0.55);
+  transform-origin: left;
+  animation: app-current 0.9s cubic-bezier(0.2, 0.7, 0.1, 1) 0.15s both;
+}
+@keyframes app-current { from { transform: scaleX(0); opacity: 0.4; } to { transform: scaleX(1); opacity: 1; } }
+
+/* the whole page arrives once, quietly */
+.app-page > * { animation: app-in 0.45s ease-out both; }
+@keyframes app-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* cards: a lit top edge instead of a drop shadow */
+.cinema-shell [data-slot="card"], .cinema-shell .app-card {
+  background: linear-gradient(180deg, hsl(213 23% 9%), hsl(213 23% 7.4%));
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.cinema-shell table thead tr { border-color: rgba(255, 255, 255, 0.07); }
+.cinema-shell table th { font-weight: 500; color: hsl(var(--muted-foreground)); }
+
+/* sidebar: the active screen carries the amber */
+.cinema-shell [data-sidebar="menu-button"][data-active="true"] {
+  box-shadow: inset 2px 0 0 #f5a524;
+  background: linear-gradient(90deg, rgba(245, 165, 36, 0.1), transparent 85%);
+}
+.cinema-shell [data-sidebar="menu-button"][data-active="true"] > svg { color: #f5a524; }
+.cinema-shell [data-sidebar="group-label"] { letter-spacing: 0.08em; font-stretch: 112%; color: hsl(209 10% 48%); }
+
+/* the English hero title is a line longer; let it sit a size down */
+.cn-hero-title.is-long { font-size: clamp(2.6rem, 5.3vw, 5.2rem); }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-page h1::after, .app-page > * { animation: none; }
+}

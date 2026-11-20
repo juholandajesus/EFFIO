@@ -81,7 +81,7 @@ export default function Consumo() {
             </div>
             <div className="bg-card border px-3 py-1.5 rounded-md flex items-center gap-2">
               <span className="text-muted-foreground">Custo:</span>
-              <span className="font-semibold text-secondary">{formatCurrency(consumo.resumo.total_custo)}</span>
+              <span className="font-semibold text-primary">{formatCurrency(consumo.resumo.total_custo)}</span>
             </div>
           </div>
         )}
@@ -217,8 +217,8 @@ export default function Consumo() {
                   <TableCell>
                     <Badge className={
                       registro.tipo_operacao.toUpperCase() === 'CONSUMO' ? 'bg-primary/20 text-primary hover:bg-primary/30 border-primary/20' :
-                      registro.tipo_operacao.toUpperCase() === 'COMPRA' ? 'bg-blue-500/20 text-blue-700 hover:bg-blue-500/30 border-blue-500/20' :
-                      'bg-green-500/20 text-green-700 hover:bg-green-500/30 border-green-500/20'
+                      registro.tipo_operacao.toUpperCase() === 'COMPRA' ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 border-blue-500/20' :
+                      'bg-green-500/20 text-green-300 hover:bg-green-500/30 border-green-500/20'
                     } variant="secondary">
                       {registro.tipo_operacao}
                     </Badge>

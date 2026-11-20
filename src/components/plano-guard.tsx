@@ -19,11 +19,11 @@ export function PlanoGuard({ requires, children }: PlanoGuardProps) {
   if (!empresaAtiva) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Card className="max-w-md w-full border-amber-200 bg-amber-50">
+        <Card className="max-w-md w-full border-amber-500/30 bg-amber-500/10">
           <CardContent className="flex flex-col items-center gap-3 pt-8 pb-8 text-center">
             <Lock className="h-10 w-10 text-amber-500" />
-            <p className="font-semibold text-amber-900">Selecione uma empresa</p>
-            <p className="text-sm text-amber-700">
+            <p className="font-semibold text-amber-300">Selecione uma empresa</p>
+            <p className="text-sm text-amber-300">
               Use o seletor no topo da tela para escolher a empresa ativa e acessar este módulo.
             </p>
           </CardContent>
@@ -42,13 +42,13 @@ export function PlanoGuard({ requires, children }: PlanoGuardProps) {
   if (!allowed) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Card className="max-w-md w-full border-orange-200 bg-orange-50">
+        <Card className="max-w-md w-full border-orange-500/30 bg-orange-500/10">
           <CardContent className="flex flex-col items-center gap-3 pt-8 pb-8 text-center">
             <Lock className="h-10 w-10 text-orange-500" />
-            <p className="font-semibold text-orange-900">
+            <p className="font-semibold text-orange-300">
               Módulo não disponível no plano atual
             </p>
-            <p className="text-sm text-orange-700">
+            <p className="text-sm text-orange-300">
               Este módulo requer o plano{" "}
               <strong>{PLANO_LABELS[requires]}</strong>. A empresa{" "}
               <strong>{empresaAtiva.razao_social}</strong> está no plano{" "}

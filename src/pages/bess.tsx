@@ -83,9 +83,9 @@ const VARIAVEIS_DISPONIVEIS = [
 ] as const;
 
 const STATUS_COLORS: Record<string, string> = {
-  "Integrado": "bg-green-100 text-green-800 border-green-200",
-  "Em análise": "bg-amber-100 text-amber-800 border-amber-200",
-  "Não integrado": "bg-gray-100 text-gray-600 border-gray-200",
+  "Integrado": "bg-green-500/15 text-green-300 border-green-500/30",
+  "Em análise": "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  "Não integrado": "bg-muted text-muted-foreground border-border",
 };
 
 const formSchema = z.object({
@@ -258,9 +258,6 @@ export default function Bess() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <BatteryCharging className="h-6 w-6 text-primary" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">BESS</h1>
             <p className="text-sm text-muted-foreground">Battery Energy Storage System</p>
@@ -273,12 +270,12 @@ export default function Bess() {
       </div>
 
       {/* Info card */}
-      <Card className="border-amber-200 bg-amber-50">
+      <Card className="border-amber-500/30 bg-amber-500/10">
         <CardContent className="flex gap-3 pt-4 pb-4">
-          <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <Info className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-amber-900 text-sm">Módulo de Armazenamento Energético</p>
-            <p className="text-amber-700 text-sm mt-1">
+            <p className="font-medium text-amber-300 text-sm">Módulo de Armazenamento Energético</p>
+            <p className="text-amber-300 text-sm mt-1">
               Este módulo é destinado a empresas com sistemas de armazenamento de energia (BESS —
               Battery Energy Storage System). Cadastre aqui as informações técnicas das suas unidades
               para centralizar o monitoramento e facilitar a integração futura com sensores e telemetria
@@ -338,7 +335,7 @@ export default function Bess() {
                     <TableCell>
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
-                          STATUS_COLORS[bess.status_integracao] ?? "bg-gray-100 text-gray-600"
+                          STATUS_COLORS[bess.status_integracao] ?? "bg-muted text-muted-foreground"
                         }`}
                       >
                         {bess.status_integracao}

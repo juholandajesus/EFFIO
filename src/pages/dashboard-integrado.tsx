@@ -1,5 +1,6 @@
-import { GitMerge, Zap, BatteryCharging, TrendingUp, BarChart3, Activity } from "lucide-react";
+import { Zap, BatteryCharging, TrendingUp, BarChart3, Activity } from "lucide-react";
 import { appLocale } from "@/i18n";
+import { GRID, AXIS, TOOLTIP } from "@/industry/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanoGuard } from "@/components/plano-guard";
 import { useEmpresa } from "@/context/empresa-context";
@@ -43,9 +44,6 @@ export default function DashboardIntegrado() {
     <PlanoGuard requires="completo">
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="bg-emerald-100 p-2 rounded-lg">
-            <GitMerge className="h-6 w-6 text-emerald-600" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Dashboard Integrado</h1>
             <p className="text-sm text-muted-foreground">
@@ -64,7 +62,7 @@ export default function DashboardIntegrado() {
             <Card>
               <CardContent className="pt-5 pb-5">
                 <p className="text-xs text-muted-foreground mb-1">Total Consumo</p>
-                <p className="text-xl font-bold text-amber-600">
+                <p className="text-xl font-bold text-amber-400">
                   {dashboard?.resumo ? formatMwh(dashboard.resumo.total_montante_mwh) : "—"}
                 </p>
               </CardContent>
@@ -72,7 +70,7 @@ export default function DashboardIntegrado() {
             <Card>
               <CardContent className="pt-5 pb-5">
                 <p className="text-xs text-muted-foreground mb-1">Custo Total</p>
-                <p className="text-xl font-bold text-orange-600">
+                <p className="text-xl font-bold text-orange-400">
                   {dashboard?.resumo ? formatCurrency(dashboard.resumo.total_custo) : "—"}
                 </p>
               </CardContent>
@@ -106,13 +104,13 @@ export default function DashboardIntegrado() {
             <Card>
               <CardContent className="pt-5 pb-5">
                 <p className="text-xs text-muted-foreground mb-1">Unidades BESS</p>
-                <p className="text-xl font-bold text-blue-600">{bessUnidades?.length ?? 0}</p>
+                <p className="text-xl font-bold text-blue-400">{bessUnidades?.length ?? 0}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-5 pb-5">
                 <p className="text-xs text-muted-foreground mb-1">Integradas</p>
-                <p className="text-xl font-bold text-green-600">
+                <p className="text-xl font-bold text-green-400">
                   {bessUnidades?.filter((b) => b.status_integracao === "Integrado").length ?? 0}
                 </p>
               </CardContent>
@@ -144,13 +142,14 @@ export default function DashboardIntegrado() {
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={dashboard?.por_submercado ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="submercado" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <CartesianGrid vertical={false} stroke={GRID} />
+                  <XAxis dataKey="submercado" {...AXIS} />
+                  <YAxis {...AXIS} />
                   <Tooltip
+                    {...TOOLTIP}
                     formatter={(value: number) => [`${value.toFixed(1)} MWh`, "Consumo"]}
                   />
-                  <Bar dataKey="total_montante_mwh" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total_montante_mwh" fill="#f5a524" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -158,12 +157,12 @@ export default function DashboardIntegrado() {
         )}
 
         {/* Intelligence Banner */}
-        <Card className="border-emerald-200 bg-emerald-50">
+        <Card className="border-emerald-500/30 bg-emerald-500/10">
           <CardContent className="flex items-center gap-3 pt-4 pb-4">
-            <Activity className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+            <Activity className="h-5 w-5 text-emerald-400 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-emerald-900 text-sm">Inteligência Energética Integrada</p>
-              <p className="text-emerald-700 text-sm mt-1">
+              <p className="font-semibold text-emerald-300 text-sm">Inteligência Energética Integrada</p>
+              <p className="text-emerald-300 text-sm mt-1">
                 A combinação dos dados do Mercado Livre (CSV/CCEE) com os dados de telemetria BESS permitirá otimização de despacho, arbitragem energética e redução de custos de exposição. Disponível após integração dos gateways IoT.
               </p>
             </div>

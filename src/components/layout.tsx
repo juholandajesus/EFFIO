@@ -11,25 +11,25 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-/** Screens that use the night "cinema" palette for the whole shell. */
-const CINEMA = ["/inicio"];
+/** Screens that draw edge to edge (no page padding). */
+const FULL_BLEED = ["/inicio"];
 
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
-  const cinema = CINEMA.includes(location);
+  const bleed = FULL_BLEED.includes(location);
   return (
     <SidebarProvider>
-      <div className={`flex min-h-screen w-full bg-background text-foreground ${cinema ? "cinema-shell" : ""}`}>
+      <div className="cinema-shell flex min-h-screen w-full bg-background text-foreground">
         <AppSidebar />
         <main className="flex-1 flex flex-col min-w-0">
-          <div className="h-14 border-b flex items-center px-4 bg-card gap-3">
+          <div className="app-topbar sticky top-0 z-20 flex h-14 items-center gap-3 px-4">
             <SidebarTrigger />
-            <div className="hidden text-sm font-medium text-muted-foreground sm:block">EFFIO Cockpit</div>
+            
             <div className="flex-1" />
-            <EmpresaSelector />
-            <LangToggle />
+            <div className="min-w-0 shrink"><EmpresaSelector /></div>
+            <div className="shrink-0"><LangToggle /></div>
           </div>
-          <div className={`flex-1 overflow-auto ${cinema ? "" : "p-6 pb-24"}`}>
+          <div className={`flex-1 overflow-auto ${bleed ? "" : "app-page px-[4%] py-8 pb-24 md:px-10"}`}>
             {children}
           </div>
         </main>

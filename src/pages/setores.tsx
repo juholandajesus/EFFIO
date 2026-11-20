@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,9 +90,6 @@ export default function Setores() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <Building2 className="h-6 w-6 text-blue-600" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Setores</h1>
             <p className="text-sm text-muted-foreground">Gerencie os setores produtivos da empresa</p>

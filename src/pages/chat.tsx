@@ -43,9 +43,9 @@ interface Usuario {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  aberto: "bg-amber-100 text-amber-800",
-  em_andamento: "bg-blue-100 text-blue-800",
-  resolvido: "bg-green-100 text-green-800",
+  aberto: "bg-amber-500/15 text-amber-300",
+  em_andamento: "bg-blue-500/15 text-blue-300",
+  resolvido: "bg-green-500/15 text-green-300",
 };
 
 export default function Chat() {
@@ -179,9 +179,6 @@ export default function Chat() {
     <div className="space-y-6 h-[calc(100vh-8rem)]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-indigo-100 p-2 rounded-lg">
-            <MessageSquare className="h-6 w-6 text-indigo-600" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Chat Interno</h1>
             <p className="text-sm text-muted-foreground">Chamados e comunicação entre equipes</p>
@@ -238,7 +235,7 @@ export default function Chat() {
                     <Button size="sm" variant="outline" onClick={() => mudarStatus.mutate("em_andamento")}>Em andamento</Button>
                   )}
                   {chamadoAtivo.status !== "resolvido" && (
-                    <Button size="sm" variant="outline" className="text-green-700" onClick={() => mudarStatus.mutate("resolvido")}>Resolver</Button>
+                    <Button size="sm" variant="outline" className="text-green-300" onClick={() => mudarStatus.mutate("resolvido")}>Resolver</Button>
                   )}
                 </div>
               </CardHeader>

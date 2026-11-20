@@ -12,7 +12,7 @@ import { detectAnomalies, forecast, type Anomaly } from "@/industry/engine";
 import { anomalyEvidence, anomalyTitle } from "@/industry/copilot";
 import { suspectsFor } from "@/industry/attribution";
 import { requestConfirmation, useInvalidateTickets, useMachines, useTickets } from "@/industry/use-machines";
-import { AXIS, GRID, Kpi, Legend, NoPlant, PageHeader, SERIES, SeverityBadge, STATUS, TOOLTIP } from "@/industry/ui";
+import { AXIS, GRID, Kpi, Legend, NoPlant, PageHeader, SERIES, SERIES_SOFT, MUTED_INK, SeverityBadge, STATUS, TOOLTIP } from "@/industry/ui";
 import { openCopilot } from "@/components/copilot-panel";
 import { FaiscaMark } from "@/components/faisca-mark";
 
@@ -145,7 +145,7 @@ export default function Anomalies() {
                           <div key={s.machine.id} className="grid grid-cols-[minmax(0,12rem)_1fr_3rem] items-center gap-3 text-sm">
                             <span className="truncate">{s.machine.nome}</span>
                             <div className="h-2 rounded-full bg-muted">
-                              <div className="h-2 rounded-full" style={{ width: `${s.probability * 100}%`, background: i === 0 ? SERIES[0] : "#9db8d6" }} />
+                              <div className="h-2 rounded-full" style={{ width: `${s.probability * 100}%`, background: i === 0 ? SERIES[0] : SERIES_SOFT }} />
                             </div>
                             <span className="text-right tabular-nums">{Math.round(s.probability * 100)}%</span>
                           </div>
@@ -153,7 +153,7 @@ export default function Anomalies() {
                         <div className="grid grid-cols-[minmax(0,12rem)_1fr_3rem] items-center gap-3 text-sm text-muted-foreground">
                           <span>{t("anom.otherLoads")}</span>
                           <div className="h-2 rounded-full bg-muted">
-                            <div className="h-2 rounded-full bg-stone-300" style={{ width: `${other * 100}%` }} />
+                            <div className="h-2 rounded-full bg-muted" style={{ width: `${other * 100}%` }} />
                           </div>
                           <span className="text-right tabular-nums">{Math.round(other * 100)}%</span>
                         </div>
@@ -217,7 +217,7 @@ export default function Anomalies() {
           <Legend
             items={[
               { label: t("fc.expected"), color: SERIES[0] },
-              { label: t("fc.range"), color: "#cde2fb" },
+              { label: t("fc.range"), color: SERIES_SOFT },
               { label: t("fc.contracted"), color: STATUS.critical, dashed: true },
             ]}
           />
@@ -226,7 +226,7 @@ export default function Anomalies() {
               <ComposedChart data={fcData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke={GRID} />
                 <XAxis dataKey="ts" {...AXIS} tickFormatter={(d) => fmt.date(d, { weekday: "short", day: "2-digit" })} interval={23} />
-                <YAxis {...AXIS} width={60} tickFormatter={(v) => fmt.num(v)} domain={[0, Math.ceil((f.contractedKw * 1.08) / 500) * 500]} label={{ value: "kW", angle: -90, position: "insideLeft", fill: "#78716c", fontSize: 11 }} />
+                <YAxis {...AXIS} width={60} tickFormatter={(v) => fmt.num(v)} domain={[0, Math.ceil((f.contractedKw * 1.08) / 500) * 500]} label={{ value: "kW", angle: -90, position: "insideLeft", fill: MUTED_INK, fontSize: 11 }} />
                 <Tooltip
                   {...TOOLTIP}
                   labelFormatter={(d) => fmt.dateTime(d)}
@@ -234,7 +234,7 @@ export default function Anomalies() {
                     Array.isArray(v) ? [`${fmt.num(v[0])}–${fmt.num(v[1])} kW`, t("fc.range")] : [`${fmt.num(v)} kW`, name === "kw" ? t("fc.expected") : String(name)]
                   }
                 />
-                <Area dataKey="band" stroke="none" fill="#cde2fb" fillOpacity={0.8} isAnimationActive={false} />
+                <Area dataKey="band" stroke="none" fill={SERIES_SOFT} fillOpacity={0.8} isAnimationActive={false} />
                 <ReferenceLine y={f.contractedKw} stroke={STATUS.critical} strokeDasharray="5 4" />
                 <Line dataKey="kw" stroke={SERIES[0]} strokeWidth={2} dot={false} isAnimationActive={false} />
               </ComposedChart>

@@ -1,4 +1,4 @@
-import { BatteryCharging, CheckCircle, AlertTriangle, Clock, FileText } from "lucide-react";
+import { BatteryCharging, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanoGuard } from "@/components/plano-guard";
 import { useEmpresa } from "@/context/empresa-context";
@@ -9,22 +9,22 @@ const DIAGNOSTICOS_MOCK = [
     tipo: "cobertura_variaveis",
     titulo: "Cobertura de Variáveis",
     icon: CheckCircle,
-    cor: "text-green-600",
-    bg: "bg-green-50 border-green-200",
+    cor: "text-green-400",
+    bg: "bg-green-500/10 border-green-500/30",
   },
   {
     tipo: "latencia_coleta",
     titulo: "Latência de Coleta",
     icon: Clock,
-    cor: "text-amber-600",
-    bg: "bg-amber-50 border-amber-200",
+    cor: "text-amber-400",
+    bg: "bg-amber-500/10 border-amber-500/30",
   },
   {
     tipo: "alertas_soh",
     titulo: "Alertas de SOH",
     icon: AlertTriangle,
-    cor: "text-orange-600",
-    bg: "bg-orange-50 border-orange-200",
+    cor: "text-orange-400",
+    bg: "bg-orange-500/10 border-orange-500/30",
   },
 ];
 
@@ -44,9 +44,6 @@ export default function DiagnosticosBess() {
     <PlanoGuard requires="bess">
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <FileText className="h-6 w-6 text-primary" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Diagnósticos BESS</h1>
             <p className="text-sm text-muted-foreground">
@@ -66,7 +63,7 @@ export default function DiagnosticosBess() {
           <Card>
             <CardContent className="pt-5 pb-5">
               <p className="text-sm text-muted-foreground mb-1">Unidades Integradas</p>
-              <p className="text-3xl font-bold text-green-600">{integradas}</p>
+              <p className="text-3xl font-bold text-green-400">{integradas}</p>
             </CardContent>
           </Card>
           <Card>
@@ -101,27 +98,27 @@ export default function DiagnosticosBess() {
                   {/* Status de integração */}
                   <div className={`rounded-lg border p-3 ${
                     bess.status_integracao === "Integrado"
-                      ? "bg-green-50 border-green-200"
+                      ? "bg-green-500/10 border-green-500/30"
                       : bess.status_integracao === "Em análise"
-                      ? "bg-amber-50 border-amber-200"
-                      : "bg-gray-50 border-gray-200"
+                      ? "bg-amber-500/10 border-amber-500/30"
+                      : "bg-muted border-border"
                   }`}>
                     <p className="text-xs font-medium text-muted-foreground">Status</p>
                     <p className="font-semibold text-sm mt-1">{bess.status_integracao}</p>
                   </div>
 
                   {/* Variáveis monitoradas */}
-                  <div className="rounded-lg border p-3 bg-blue-50 border-blue-200">
+                  <div className="rounded-lg border p-3 bg-blue-500/10 border-blue-500/30">
                     <p className="text-xs font-medium text-muted-foreground">Variáveis</p>
-                    <p className="font-semibold text-sm mt-1 text-blue-700">
+                    <p className="font-semibold text-sm mt-1 text-blue-300">
                       {bess.variaveis_monitoradas?.length ?? 0} configuradas
                     </p>
                   </div>
 
                   {/* Protocolo */}
-                  <div className="rounded-lg border p-3 bg-purple-50 border-purple-200">
+                  <div className="rounded-lg border p-3 bg-purple-500/10 border-purple-500/30">
                     <p className="text-xs font-medium text-muted-foreground">Protocolo</p>
-                    <p className="font-semibold text-sm mt-1 text-purple-700">
+                    <p className="font-semibold text-sm mt-1 text-purple-300">
                       {bess.protocolo_comunicacao ?? "Não definido"}
                     </p>
                   </div>
@@ -145,10 +142,10 @@ export default function DiagnosticosBess() {
           </div>
         )}
 
-        <Card className="border-dashed border-amber-300 bg-amber-50/50">
+        <Card className="border-dashed border-amber-500/30 bg-amber-500/5">
           <CardContent className="flex items-center gap-3 pt-4 pb-4">
             <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
-            <p className="text-sm text-amber-700">
+            <p className="text-sm text-amber-300">
               <strong>Diagnósticos avançados</strong> — Análise de degradação de SOH, alertas de temperatura fora do range e anomalias de corrente serão disponibilizados após integração dos gateways IoT.
             </p>
           </CardContent>
