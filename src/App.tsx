@@ -25,6 +25,12 @@ import Chat from "@/pages/chat";
 import Aprovacoes from "@/pages/aprovacoes";
 import { Layout } from "@/components/layout";
 import { DemoBanner } from "@/components/demo-banner";
+import { I18nProvider } from "@/i18n";
+import Overview from "@/pages/overview";
+import Production from "@/pages/production";
+import Anomalies from "@/pages/anomalies";
+import Carbon from "@/pages/carbon";
+import Integrations from "@/pages/integrations";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +41,21 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/cadastro" component={Cadastro} />
 
+      <Route path="/overview">
+        <Layout><Overview /></Layout>
+      </Route>
+      <Route path="/production">
+        <Layout><Production /></Layout>
+      </Route>
+      <Route path="/anomalies">
+        <Layout><Anomalies /></Layout>
+      </Route>
+      <Route path="/carbon">
+        <Layout><Carbon /></Layout>
+      </Route>
+      <Route path="/integrations">
+        <Layout><Integrations /></Layout>
+      </Route>
       <Route path="/dashboard">
         <Layout><Dashboard /></Layout>
       </Route>
@@ -86,6 +107,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <I18nProvider>
       <TooltipProvider>
         <AuthProvider>
           <EmpresaProvider>
@@ -97,6 +119,7 @@ function App() {
         <Toaster />
         <DemoBanner />
       </TooltipProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

@@ -1,8 +1,23 @@
 import { Link } from "wouter";
-import { Zap, ArrowRight, ShieldCheck, BarChart3, Database } from "lucide-react";
+import { Zap, ArrowRight, Boxes, Sparkles, Radar, Leaf, PlugZap, Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LangToggle, useT } from "@/i18n";
+import { REGIONS } from "@/industry/regions";
 
 export default function Landing() {
+  const { t, lang } = useT();
+  const features = [
+    { icon: Boxes, title: t("land.f1"), body: t("land.f1b") },
+    { icon: Sparkles, title: t("land.f2"), body: t("land.f2b") },
+    { icon: Radar, title: t("land.f3"), body: t("land.f3b") },
+    { icon: Leaf, title: t("land.f4"), body: t("land.f4b") },
+  ];
+  const steps = [
+    { icon: PlugZap, title: t("land.s1"), body: t("land.s1b") },
+    { icon: Factory, title: t("land.s2"), body: t("land.s2b") },
+    { icon: Zap, title: t("land.s3"), body: t("land.s3b") },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <header className="px-6 py-4 flex justify-between items-center border-b">
@@ -10,61 +25,76 @@ export default function Landing() {
           <Zap className="h-8 w-8 fill-current" />
           <span className="font-bold text-2xl text-foreground tracking-tight">EFFIO</span>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-3">
+          <LangToggle />
           <Button variant="ghost" asChild>
-            <Link href="/login">Entrar</Link>
+            <Link href="/login">{t("land.login")}</Link>
           </Button>
           <Button asChild>
-            <Link href="/cadastro">Cadastre-se</Link>
+            <Link href="/login">{t("land.demo")}</Link>
           </Button>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto py-20">
-        <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary/10 text-secondary mb-8">
-          Inteligência Energética para o Mercado Livre
-        </div>
-        
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
-          Assuma o controle da sua <span className="text-primary">energia</span>.
-        </h1>
-        
-        <p className="text-xl text-muted-foreground mb-10 max-w-2xl">
-          A EFFIO transforma dados complexos de consumo horário em decisões estratégicas. O cockpit definitivo para gestores de energia no Brasil.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 mb-20">
-          <Button size="lg" className="h-14 px-8 text-lg" asChild>
-            <Link href="/cadastro">
-              Começar Agora <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </Button>
-          <Button size="lg" variant="outline" className="h-14 px-8 text-lg" asChild>
-            <Link href="/login">Acessar Cockpit</Link>
-          </Button>
-        </div>
+      <main className="flex-1">
+        <section className="mx-auto flex max-w-5xl flex-col items-center px-4 py-20 text-center">
+          <div className="mb-8 inline-flex items-center rounded-full bg-secondary/10 px-3 py-1 text-sm font-semibold text-secondary">
+            {t("land.badge")}
+          </div>
+          <h1 className="mb-6 text-5xl font-extrabold tracking-tight md:text-6xl">
+            {t("land.h1a")} <span className="text-primary">{t("land.h1b")}</span>
+          </h1>
+          <p className="mb-10 max-w-2xl text-xl text-muted-foreground">{t("land.sub")}</p>
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row">
+            <Button size="lg" className="h-14 px-8 text-lg" asChild>
+              <Link href="/login">
+                {t("land.demo")} <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" className="h-14 px-8 text-lg" asChild>
+              <Link href="/cadastro">{t("land.signup")}</Link>
+            </Button>
+          </div>
+          <div className="flex flex-wrap justify-center gap-3 text-sm text-muted-foreground">
+            {Object.values(REGIONS).map((r) => (
+              <span key={r.code} className="rounded-full border px-3 py-1">
+                {r.flag} {r.name[lang]}
+              </span>
+            ))}
+          </div>
+        </section>
 
-        <div className="grid md:grid-cols-3 gap-8 w-full text-left">
-          <div className="p-6 rounded-2xl bg-card border shadow-sm">
-            <Database className="h-10 w-10 text-primary mb-4" />
-            <h3 className="text-xl font-bold mb-2">Ingestão Simples</h3>
-            <p className="text-muted-foreground">Faça upload dos seus dados CCEE em CSV e deixe a EFFIO estruturar milhares de registros em segundos.</p>
+        <section className="mx-auto grid max-w-6xl gap-6 px-4 pb-16 md:grid-cols-2 lg:grid-cols-4">
+          {features.map((f) => (
+            <div key={f.title} className="rounded-2xl border bg-card p-6 text-left shadow-sm">
+              <f.icon className="mb-4 h-9 w-9 text-primary" />
+              <h3 className="mb-2 text-lg font-bold">{f.title}</h3>
+              <p className="text-sm text-muted-foreground">{f.body}</p>
+            </div>
+          ))}
+        </section>
+
+        <section className="border-t bg-muted/30">
+          <div className="mx-auto max-w-5xl px-4 py-16">
+            <h2 className="mb-10 text-center text-3xl font-bold tracking-tight">{t("land.how")}</h2>
+            <div className="grid gap-8 md:grid-cols-3">
+              {steps.map((s, i) => (
+                <div key={s.title} className="text-left">
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{i + 1}</span>
+                    <s.icon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="mb-1 font-semibold">{s.title}</h3>
+                  <p className="text-sm text-muted-foreground">{s.body}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="p-6 rounded-2xl bg-card border shadow-sm">
-            <BarChart3 className="h-10 w-10 text-secondary mb-4" />
-            <h3 className="text-xl font-bold mb-2">Dashboards Precisos</h3>
-            <p className="text-muted-foreground">Visualize o consumo por submercado, tipo de operação e acompanhe sua série temporal diária.</p>
-          </div>
-          <div className="p-6 rounded-2xl bg-card border shadow-sm">
-            <ShieldCheck className="h-10 w-10 text-primary mb-4" />
-            <h3 className="text-xl font-bold mb-2">Decisões Seguras</h3>
-            <p className="text-muted-foreground">Identifique picos de custo, anomalias e oportunidades de otimização no seu perfil de carga.</p>
-          </div>
-        </div>
+        </section>
       </main>
 
       <footer className="border-t py-8 text-center text-muted-foreground">
-        <p>© {new Date().getFullYear()} EFFIO Energy Intelligence. Todos os direitos reservados.</p>
+        <p>© {new Date().getFullYear()} EFFIO Energy Intelligence. {t("land.rights")}</p>
       </footer>
     </div>
   );

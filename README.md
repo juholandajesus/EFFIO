@@ -5,6 +5,25 @@ React 19 + Vite 6 + Tailwind 4 + shadcn/ui + React Query + wouter.
 
 Adaptado do projeto original no Replit para rodar sozinho: no **StackBlitz**, no seu computador ou em qualquer hospedagem estática (Vercel, Netlify...).
 
+## Novidades da branch `demo-global` (IA industrial, EN/PT)
+
+Módulos novos, pensados para indústria e para o mercado do Golfo (Emirados, Arábia Saudita, Omã), sem perder o Brasil:
+
+| Tela | O que faz |
+|---|---|
+| **Visão da planta** (`/overview`) | Energia, custo na moeda local, CO₂, pico vs. demanda contratada e a economia anual identificada |
+| **Energia × Produção** (`/production`) | kWh, custo e CO₂ por produto e por ordem de produção do ERP; tendência de kWh/unidade vs. referência |
+| **Anomalias e Previsão** (`/anomalies`) | Detecção automática (carga de base, equipamento ligado sem produzir, pico de demanda, perda de eficiência) e previsão de carga de 7 dias |
+| **Carbono e ESG** (`/carbon`) | Escopo 2 por planta e por produto, meta de redução com alavancas, exportação CSV e impressão |
+| **ERP e Integrações** (`/integrations`) | Conectores (ERP parceiro, SAP, Dynamics, Odoo, medidores, OPC UA), mapeamento de campos e API aberta |
+| **Copiloto EFFIO** (botão flutuante) | Responde perguntas com os números da planta; pode ser ligado a qualquer LLM via `VITE_COPILOT_URL` |
+
+- Idiomas: inglês e português (botão EN/PT no topo); as telas antigas do Mercado Livre continuam em português.
+- Plantas demo: Falcon Crest Aluminium (🇦🇪 AED), Rimal Steel (🇸🇦 SAR), Sohar Bay Polymers (🇴🇲 OMR) e Metalúrgica Horizonte (🇧🇷 BRL).
+- Login demo do Golfo: `demo@effio.ai` / `effio123` (ou os botões "Demo rápida" na tela de login).
+- O código do motor fica em `src/industry/`: `plants.ts` (plantas e anomalias simuladas), `engine.ts` (análises), `regions.ts` (tarifas e fatores de emissão por país), `copilot.ts`.
+- As análises só leem medidor + ERP, então funcionam iguais quando os dados forem reais.
+
 ## Rodando
 
 ```bash

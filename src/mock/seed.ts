@@ -136,6 +136,8 @@ export interface Db {
 
 export const DEMO_EMAIL = "demo@effio.com.br";
 export const DEMO_SENHA = "effio123";
+/** Gulf demo account (English-first, lands on the UAE aluminium plant). */
+export const DEMO_EMAIL_GULF = "demo@effio.ai";
 
 // Gerador pseudoaleatório determinístico (os mesmos dados toda vez)
 function rng(seed: number) {
@@ -203,18 +205,22 @@ export function criarSeed(): Db {
   return {
     version: 1,
     seq: {
-      usuarios: 4, empresas: 3, setores: 4, maquinas: 5, contratos: 1,
+      usuarios: 5, empresas: 6, setores: 4, maquinas: 5, contratos: 1,
       bess: 3, consumo: consumo.length, chamados: 1, mensagens: 3,
     },
     usuarios: [
       { id: 1, nome: "Ana Gestora", email: DEMO_EMAIL, cpf: "", telefone: "(11) 99999-0000", senha: DEMO_SENHA, perfil: "gestor_principal", status: "ativo", empresa_id: 1, created_at: isoDaysAgo(60) },
       { id: 2, nome: "Carlos Souza", email: "carlos@effio.com.br", cpf: "", telefone: "(11) 98888-1111", senha: DEMO_SENHA, perfil: "colaborador", status: "ativo", empresa_id: 1, created_at: isoDaysAgo(40) },
       { id: 3, nome: "Mariana Lima", email: "mariana@effio.com.br", cpf: "", telefone: "(11) 97777-2222", senha: DEMO_SENHA, perfil: "colaborador", status: "pendente", empresa_id: 1, created_at: isoDaysAgo(2) },
+      { id: 5, nome: "Omar Haddad", email: DEMO_EMAIL_GULF, cpf: "", telefone: "+971 50 000 0000", senha: DEMO_SENHA, perfil: "gestor_principal", status: "ativo", empresa_id: 4, created_at: isoDaysAgo(30) },
       { id: 4, nome: "Rafael Torres", email: "rafael@effio.com.br", cpf: "", telefone: "(11) 96666-3333", senha: DEMO_SENHA, perfil: "colaborador", status: "pendente", empresa_id: 1, created_at: isoDaysAgo(1) },
     ],
     empresas: [
       { id: 1, razao_social: "Metalúrgica Horizonte Ltda", cnpj: "12.345.678/0001-90", setor: "Metalurgia", demanda_contratada_kw: 2500, distribuidora: "Enel SP", tipo_plano: "completo", created_at: isoDaysAgo(60) },
       { id: 2, razao_social: "Frigorífico Vale Verde S.A.", cnpj: "98.765.432/0001-10", setor: "Alimentos", demanda_contratada_kw: 1800, distribuidora: "Copel", tipo_plano: "mercado_livre", created_at: isoDaysAgo(50) },
+      { id: 4, razao_social: "Falcon Crest Aluminium LLC", cnpj: "TRN 100-0000-0004", setor: "Aluminium extrusion", demanda_contratada_kw: 4600, distribuidora: "DEWA", tipo_plano: "completo", created_at: isoDaysAgo(30) },
+      { id: 5, razao_social: "Rimal Steel Industries Co.", cnpj: "CR 2055-000005", setor: "Steel rolling", demanda_contratada_kw: 16500, distribuidora: "Saudi Electricity Co.", tipo_plano: "completo", created_at: isoDaysAgo(25) },
+      { id: 6, razao_social: "Sohar Bay Polymers LLC", cnpj: "CR 1-000006", setor: "Plastics & packaging", demanda_contratada_kw: 3100, distribuidora: "Majan Electricity", tipo_plano: "completo", created_at: isoDaysAgo(20) },
       { id: 3, razao_social: "Têxtil Aurora Ltda", cnpj: "45.678.901/0001-23", setor: "Têxtil", demanda_contratada_kw: 900, distribuidora: "Cemig", tipo_plano: "bess", created_at: isoDaysAgo(30) },
     ],
     setores: [
