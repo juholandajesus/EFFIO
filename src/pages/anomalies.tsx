@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CheckCircle2, ClipboardList, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock, MessageSquareShare, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders } from "@/context/auth-context";
 import { usePlant } from "@/industry/use-plant";
-import { detectAnomalies, forecast, getPlant, lineName, productName, type Anomaly } from "@/industry/engine";
-import { anomalyHint, anomalyTitle } from "@/industry/copilot";
+import { detectAnomalies, forecast, type Anomaly } from "@/industry/engine";
+import { anomalyEvidence, anomalyTitle } from "@/industry/copilot";
+import { suspectsFor } from "@/industry/attribution";
+import { requestConfirmation, useInvalidateTickets, useMachines, useTickets } from "@/industry/use-machines";
 import { AXIS, GRID, Kpi, Legend, NoPlant, PageHeader, SERIES, SeverityBadge, STATUS, TOOLTIP } from "@/industry/ui";
 import { openCopilot } from "@/components/copilot-panel";
+import { FaiscaMark } from "@/components/faisca-mark";
 
 const DONE_KEY = "effio_anomalies_done";
 
@@ -24,6 +30,15 @@ export default function Anomalies() {
   const { empresaId, info, fmt, t, lang } = usePlant();
   const { toast } = useToast();
   const [done, setDone] = useState<string[]>(loadDone);
+  const [asking, setAsking] = useState<string | null>(null);
+  const machines = useMachines(info ? empresaId : null);
+  const tickets = useTickets(!!info);
+  const invalidate = useInvalidateTickets();
+  const { data: users = [] } = useQuery<{ id: number; nome: string }[]>({
+    queryKey: ["usuarios-nomes"],
+    enabled: !!info,
+    queryFn: () => fetch("/api/usuarios", { headers: getAuthHeaders() }).then((r) => (r.ok ? r.json() : [])),
+  });
 
   useEffect(() => {
     if (window.location.hash === "#forecast") document.getElementById("forecast")?.scrollIntoView({ behavior: "smooth" });
@@ -34,8 +49,8 @@ export default function Anomalies() {
   const all = detectAnomalies(empresaId);
   const open = all.filter((a) => !done.includes(a.id));
   const f = forecast(empresaId);
-  const plant = getPlant(empresaId)!.plant;
   const totalAnnual = open.reduce((a, x) => a + x.annualizedCost, 0);
+  const nameOf = (id: number) => users.find((u) => u.id === id)?.nome ?? "";
 
   const markDone = (a: Anomaly) => {
     const next = [...done, a.id];
@@ -48,7 +63,31 @@ export default function Anomalies() {
     toast({ title: t("anom.resolvedToast") });
   };
 
-  const createTicket = (title: string) => toast({ title: t("anom.ticketToast"), description: title });
+  const ask = async (a: Anomaly) => {
+    const { suspects } = suspectsFor(a, machines);
+    setAsking(a.id);
+    try {
+      const when = fmt.dateTime(a.start);
+      const list = suspects.map((s) => `${s.machine.nome} (${Math.round(s.probability * 100)}%)`).join(", ");
+      const { owner } = await requestConfirmation({
+        kind: "confirm_ticket",
+        label: "",
+        title: lang === "pt" ? `Confirmar: ${anomalyTitle(a, "pt").toLowerCase()} (${when})` : `Confirm: ${anomalyTitle(a, "en").toLowerCase()} (${when})`,
+        body:
+          lang === "pt"
+            ? `[Faísca] ${anomalyEvidence(a, "pt", fmt)} Meus suspeitos: ${list}. Você consegue confirmar qual foi? É só tocar na máquina aqui no chamado.`
+            : `[Faísca] ${anomalyEvidence(a, "en", fmt)} My suspects: ${list}. Can you confirm which one it was? Just tap the machine here in the ticket.`,
+        anomalyId: a.id,
+        suspects: suspects.map((s) => ({ maquina_id: s.machine.id, nome: s.machine.nome, prob: Math.round(s.probability * 100) })),
+      });
+      invalidate();
+      toast({ title: t("anom.askedToast", { name: owner }) });
+    } catch (e) {
+      toast({ title: t("copilot.ticketFail", { err: e instanceof Error ? e.message : String(e) }), variant: "destructive" });
+    } finally {
+      setAsking(null);
+    }
+  };
 
   const fcData = f.points.map((p) => ({ ...p, band: [p.low, p.high] as [number, number] }));
 
@@ -62,6 +101,11 @@ export default function Anomalies() {
         <Kpi label={t("anom.fcPeak")} value={`${fmt.num(f.peak.kw)} kW`} hint={t("anom.fcPeakHint", { when: fmt.dateTime(f.peak.ts), pct: fmt.num(f.peakPct, 0) })} />
       </div>
 
+      <div className="flex items-start gap-3 rounded-xl border bg-muted/40 p-4 text-sm">
+        <FaiscaMark size={28} />
+        <p className="text-muted-foreground">{t("anom.howItWorks")}</p>
+      </div>
+
       <div className="space-y-3">
         {open.length === 0 && (
           <Card>
@@ -71,25 +115,65 @@ export default function Anomalies() {
           </Card>
         )}
         {open.map((a) => {
-          const line = plant.lines.find((l) => l.id === a.lineId)!;
-          const product = a.sku ? productName(empresaId, a.sku) : null;
-          const title = anomalyTitle(a, lang, fmt.l(lineName(empresaId, a.lineId)), product ? fmt.l(product.name) : undefined);
+          const title = anomalyTitle(a, lang);
+          const { suspects, other } = suspectsFor(a, machines);
+          const ticket = [...tickets].reverse().find((tk) => tk.anomalia_id === a.id);
+          const confirmed = ticket?.confirmado_maquina_id ? machines.find((m) => m.id === ticket.confirmado_maquina_id) : null;
           return (
             <Card key={a.id} className="shadow-sm" data-testid="anomaly-card">
-              <CardContent className="grid gap-4 py-5 md:grid-cols-[1fr_auto]">
-                <div className="space-y-2">
+              <CardContent className="grid gap-5 py-5 lg:grid-cols-[1fr_17rem]">
+                <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <SeverityBadge severity={a.severity} />
                     <span className="text-xs text-muted-foreground">
-                      {t(`anom.kind.${a.kind}` as "anom.kind.baseload")} · {fmt.dateTime(a.start)} → {a.ongoing ? t("anom.ongoing") : fmt.dateTime(a.end)} · {a.hours} h
+                      {t(`anom.kind.${a.kind}` as "anom.kind.baseload")} · {fmt.dateTime(a.start)} → {a.ongoing ? t("anom.ongoing") : fmt.dateTime(a.end)}
                     </span>
                   </div>
                   <div className="text-lg font-semibold">{title}</div>
-                  <p className="text-sm text-muted-foreground">{anomalyHint(a, lang, line.kind)}</p>
+                  <p className="text-sm text-muted-foreground">{anomalyEvidence(a, lang, fmt)}</p>
+
+                  {confirmed ? (
+                    <div className="flex items-center gap-2 rounded-lg border p-3 text-sm" data-testid="anomaly-confirmed">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" style={{ color: STATUS.good }} />
+                      <span>{t("anom.confirmedBy", { name: nameOf(ticket!.destinado_a), machine: confirmed.nome })}</span>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border p-3">
+                      <div className="mb-2 text-sm font-medium">{t("anom.suspects")}</div>
+                      <div className="space-y-2">
+                        {suspects.map((s, i) => (
+                          <div key={s.machine.id} className="grid grid-cols-[minmax(0,12rem)_1fr_3rem] items-center gap-3 text-sm">
+                            <span className="truncate">{s.machine.nome}</span>
+                            <div className="h-2 rounded-full bg-muted">
+                              <div className="h-2 rounded-full" style={{ width: `${s.probability * 100}%`, background: i === 0 ? SERIES[0] : "#9db8d6" }} />
+                            </div>
+                            <span className="text-right tabular-nums">{Math.round(s.probability * 100)}%</span>
+                          </div>
+                        ))}
+                        <div className="grid grid-cols-[minmax(0,12rem)_1fr_3rem] items-center gap-3 text-sm text-muted-foreground">
+                          <span>{t("anom.otherLoads")}</span>
+                          <div className="h-2 rounded-full bg-muted">
+                            <div className="h-2 rounded-full bg-stone-300" style={{ width: `${other * 100}%` }} />
+                          </div>
+                          <span className="text-right tabular-nums">{Math.round(other * 100)}%</span>
+                        </div>
+                      </div>
+                      {ticket && ticket.confirmado_maquina_id === 0 && <p className="mt-2 text-xs text-muted-foreground">{t("anom.noneOfThese")}</p>}
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => createTicket(title)}>
-                      <ClipboardList className="h-4 w-4" /> {t("anom.ticket")}
-                    </Button>
+                    {ticket && !confirmed ? (
+                      <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                        <Link href="/chat">
+                          <Clock className="h-4 w-4" /> {t("anom.waiting", { name: nameOf(ticket.destinado_a) })}
+                        </Link>
+                      </Button>
+                    ) : !confirmed ? (
+                      <Button size="sm" className="gap-1.5" disabled={asking === a.id} onClick={() => ask(a)} data-testid="ask-sector">
+                        <MessageSquareShare className="h-4 w-4" /> {t("anom.askSector")}
+                      </Button>
+                    ) : null}
                     <Button size="sm" variant="outline" className="gap-1.5" onClick={() => openCopilot(lang === "pt" ? `Explique: ${title}` : `Explain: ${title}`)}>
                       <Sparkles className="h-4 w-4" /> {t("anom.explain")}
                     </Button>
@@ -98,11 +182,12 @@ export default function Anomalies() {
                     </Button>
                   </div>
                 </div>
-                <div className="grid min-w-[180px] grid-cols-2 gap-3 text-right md:grid-cols-1">
+
+                <div className="grid grid-cols-2 content-start gap-4 lg:grid-cols-1 lg:text-right">
                   {a.kind === "demand_peak" ? (
                     <div>
                       <div className="text-2xl font-bold tabular-nums">{fmt.num(a.peakKw ?? 0)} kW</div>
-                      <div className="text-xs text-muted-foreground">{t("anom.ofContracted", { kw: fmt.num(plant.contractedKw) })}</div>
+                      <div className="text-xs text-muted-foreground">{t("anom.ofContracted", { kw: fmt.num(f.contractedKw) })}</div>
                     </div>
                   ) : (
                     <>

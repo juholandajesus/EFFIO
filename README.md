@@ -8,7 +8,8 @@ Adaptado do projeto original no Replit para rodar sozinho: no **StackBlitz**, no
 ## Versão atual (Brasil)
 
 - **Inglês e português:** botão EN/PT no topo. As telas novas usam `t()` (`src/i18n/en.ts` e `pt.ts`). As telas antigas são traduzidas pelo dicionário `src/i18n/legacy-en.ts`: para traduzir um texto novo de uma tela antiga, basta adicionar uma linha `"Texto em português": "English text"`.
-- **Anomalias e Previsão** (`/anomalies`): detecta carga de base elevada, equipamento ligado sem produzir, pico de demanda e perda de eficiência, cada um com o custo anual em R$, e mostra a previsão de carga de 7 dias. Hoje roda com os dados simulados da Metalúrgica Horizonte (`src/industry/`).
+- **Anomalias e Previsão** (`/anomalies`): trabalha só com a curva total da fábrica (os mesmos dados do CSV da CCEE). Detecta carga de madrugada acima do normal, energia consumida com a fábrica parada e pico de demanda, cada um com o custo anual em R$, e mostra a previsão de carga de 7 dias.
+- **Máquina suspeita por probabilidade** (`src/industry/attribution.ts`): como o CSV não diz qual máquina foi, o Faísca estima o provável culpado pelo cadastro de máquinas (potência, horário, tipo) e pelas confirmações anteriores. Ele abre um chamado no Chat Interno com os suspeitos; o setor toca na máquina certa, a confirmação é somada à máquina (`confirmacoes_ia`) e o próximo ranking fica mais preciso.
 - **Copiloto EFFIO** (botão flutuante): responde perguntas com os números da planta. Pode ser ligado a qualquer LLM via `VITE_COPILOT_URL` (veja `.env.example`).
 
 A versão para indústria no Golfo (Emirados, Arábia Saudita, Omã), com Energia × Produção, Carbono e Integrações ERP, está guardada na branch `demo-global`.

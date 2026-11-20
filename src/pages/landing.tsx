@@ -5,6 +5,8 @@ import { dailySeries, detectAnomalies, forecast, type Anomaly } from "@/industry
 import { LoadTrace } from "@/components/load-trace";
 import { FaiscaMark } from "@/components/faisca-mark";
 import { RichText } from "@/industry/ui";
+import { suspectsFor } from "@/industry/attribution";
+import { defaultRegister } from "@/industry/use-machines";
 
 const DEMO_PLANT = 1;
 
@@ -15,7 +17,12 @@ export default function Landing() {
   const anomalies = detectAnomalies(DEMO_PLANT);
   const find = (k: Anomaly["kind"]) => anomalies.find((a) => a.kind === k);
   const leak = find("baseload");
-  const idle = find("idle_running");
+  const idle = find("off_hours");
+  const register = defaultRegister(DEMO_PLANT);
+  const top = (a?: Anomaly) => (a ? suspectsFor(a, register, 1).suspects[0] : undefined);
+  const leakSuspect = top(leak);
+  const idleSuspect = top(idle);
+  const pctOf = (p?: number) => `${Math.round((p ?? 0) * 100)}%`;
   const peak = find("demand_peak");
   const fc = forecast(DEMO_PLANT);
   const days = dailySeries(DEMO_PLANT, 14);
@@ -23,8 +30,8 @@ export default function Landing() {
   const outPct = ((out(days.slice(7)) - out(days.slice(0, 7))) / out(days.slice(0, 7))) * 100;
 
   const callout = (a: Anomaly) => {
-    if (a.kind === "baseload") return <RichText text={t("land.coLeak", { cost: fmt.money(a.annualizedCost) })} />;
-    if (a.kind === "idle_running") return <RichText text={t("land.coIdle", { cost: fmt.money(a.annualizedCost) })} />;
+    if (a.kind === "baseload") return <RichText text={t("land.coLeak", { cost: fmt.money(a.annualizedCost), machine: leakSuspect?.machine.nome ?? "", p: pctOf(leakSuspect?.probability) })} />;
+    if (a.kind === "off_hours") return <RichText text={t("land.coIdle", { cost: fmt.money(a.annualizedCost), machine: idleSuspect?.machine.nome ?? "", p: pctOf(idleSuspect?.probability) })} />;
     if (a.kind === "demand_peak") return <RichText text={t("land.coPeak", { pct: fmt.num(a.peakPct ?? 0, 0) })} />;
     return null;
   };
@@ -34,7 +41,14 @@ export default function Landing() {
   const transcript = [
     {
       q: t("land.q1"),
-      a: t("land.a1", { out: fmt.pct(outPct, 1), cost: fmt.money((leak?.annualizedCost ?? 0) + (idle?.annualizedCost ?? 0)) }),
+      a: t("land.a1", {
+        out: fmt.pct(outPct, 1),
+        cost: fmt.money((leak?.annualizedCost ?? 0) + (idle?.annualizedCost ?? 0)),
+        m1: idleSuspect?.machine.nome ?? "",
+        p1: pctOf(idleSuspect?.probability),
+        m2: leakSuspect?.machine.nome ?? "",
+        p2: pctOf(leakSuspect?.probability),
+      }),
     },
     {
       q: t("land.q2"),
@@ -45,7 +59,7 @@ export default function Landing() {
         fc: fmt.num(fc.peakPct, 0),
       }),
     },
-    { q: t("land.q3"), a: t("land.a3", { cost: fmt.money(leak?.annualizedCost ?? 0) }) },
+    { q: t("land.q3"), a: t("land.a3", { machine: idleSuspect?.machine.nome ?? "", cost: fmt.money(idle?.annualizedCost ?? 0) }) },
   ];
 
   const box = [

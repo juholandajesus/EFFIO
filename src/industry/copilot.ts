@@ -1,135 +1,154 @@
 /**
- * EFFIO Copilot.
+ * Faísca, EFFIO's energy agent.
  *
  * By default it answers locally: it classifies the question and computes the
- * answer from the plant's own meter + ERP data with the analytics engine, so
- * every number it gives can be traced back to a screen.
+ * answer from the plant's whole-site curve (the CSV) and the machine register.
+ * It never claims to know which machine did it: it names suspects with a
+ * probability and asks the sector to confirm.
  *
- * If VITE_COPILOT_URL is set, questions are sent to that endpoint together
- * with a compact data context, so any LLM (or a partner's native AI) can be
- * plugged in without touching the UI. Expected response: { "answer": string }.
+ * If VITE_COPILOT_URL is set, questions go to that endpoint with the persona
+ * and a compact data context, so any LLM can take over the conversation.
  */
-import {
-  dailySeries, detectAnomalies, forecast, kpis, lineName, lineStats, productStats, type Anomaly,
-} from "./engine";
-import { getPlant } from "./engine";
+import { dailySeries, detectAnomalies, forecast, getPlant, kpis, type Anomaly } from "./engine";
+import { estimatedShares, suspectsFor, type RegisteredMachine, type Suspect } from "./attribution";
 import type { Fmt } from "./use-plant";
 
-export type Intent = "explain" | "why" | "waste" | "forecast" | "idle" | "greeting" | "unknown";
+type Lang = "en" | "pt";
+
+export type Intent = "explain" | "why" | "waste" | "forecast" | "machines" | "greeting" | "unknown";
 
 /** Something Faísca can do on its own, not just say. */
 export interface AgentAction {
-  kind: "ticket";
+  kind: "confirm_ticket";
   label: string;
   title: string; // ticket title
-  body: string; // first message of the ticket
+  body: string; // Faísca's first message in the ticket
+  anomalyId: string;
+  suspects: { maquina_id: number; nome: string; prob: number }[];
 }
 
 export interface CopilotAnswer {
-  text: string; // light markdown: **bold**, "- " bullets, blank line = paragraph
+  text: string; // light markdown: **bold**, "- " bullets
   links?: { label: string; href: string }[];
   actions?: AgentAction[];
   intent?: Intent;
   source: "local" | "remote";
 }
 
-type Lang = "en" | "pt";
+export interface CopilotCtx {
+  empresaId: number;
+  lang: Lang;
+  fmt: Fmt;
+  machines: RegisteredMachine[];
+  firstName?: string;
+  /** tickets already opened from anomalies (so Faísca doesn't ask twice) */
+  tickets?: { anomalia_id?: string | null; confirmado_maquina_id?: number | null }[];
+}
+
+function ticketOf(a: Anomaly, ctx: CopilotCtx) {
+  return ctx.tickets?.filter((t) => t.anomalia_id === a.id).pop();
+}
+
+/** "suspect X (60%)" or, once the team answered, "confirmed: X" */
+function culprit(a: Anomaly, ctx: CopilotCtx): string {
+  const pt = ctx.lang === "pt";
+  const tk = ticketOf(a, ctx);
+  if (tk?.confirmado_maquina_id) {
+    const m = ctx.machines.find((x) => x.id === tk.confirmado_maquina_id);
+    if (m) return pt ? `confirmado: ${m.nome}` : `confirmed: ${m.nome}`;
+  }
+  const top = suspectsFor(a, ctx.machines, 1).suspects[0];
+  if (!top) return "";
+  const waiting = tk ? (pt ? ", aguardando o setor" : ", waiting for the sector") : "";
+  return `${pt ? "suspeito" : "suspect"} ${top.machine.nome} (${pct(top.probability)}${waiting})`;
+}
 
 const has = (q: string, words: string[]) => words.some((w) => q.includes(w));
-
-function norm(s: string) {
-  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-}
+const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const pct = (p: number) => `${Math.round(p * 100)}%`;
 
 export function suggestions(lang: Lang): string[] {
   return lang === "pt"
-    ? [
-        "Por que o consumo subiu esta semana?",
-        "Onde estou desperdiçando energia?",
-        "Qual será o pico de demanda nos próximos 7 dias?",
-        "Quanta energia gastamos com as linhas paradas?",
-      ]
-    : [
-        "Why did consumption go up this week?",
-        "Where am I wasting energy?",
-        "What will peak demand be in the next 7 days?",
-        "How much energy do we use while lines are idle?",
-      ];
+    ? ["Por que o consumo subiu esta semana?", "Onde estou desperdiçando energia?", "Qual máquina mais pesa na conta?", "Qual será o pico de demanda nos próximos 7 dias?"]
+    : ["Why did consumption go up this week?", "Where am I wasting energy?", "Which machine weighs most on the bill?", "What will peak demand be in the next 7 days?"];
 }
 
-export function anomalyTitle(a: Anomaly, lang: Lang, line: string, product?: string): string {
+// ───────────────────────── how Faísca names things ─────────────────────────
+
+export function anomalyTitle(a: Anomaly, lang: Lang): string {
   const pt = lang === "pt";
   switch (a.kind) {
     case "baseload":
-      return pt ? `Consumo de base elevado em ${line}` : `Baseload increase on ${line}`;
+      return pt ? "Consumo de madrugada acima do normal" : "Night-time consumption above normal";
+    case "off_hours":
+      return pt ? "Energia consumida com a fábrica parada" : "Energy drawn while the plant was stopped";
     case "excess":
-      return pt ? `Consumo acima do padrão em ${line}` : `Above-baseline consumption on ${line}`;
-    case "idle_running":
-      return pt ? `${line} consumindo energia sem produzir` : `${line} drawing power while not producing`;
+      return pt ? "Consumo acima do padrão no horário de produção" : "Above-pattern consumption during production";
     case "demand_peak":
       return pt ? `Pico de demanda em ${a.peakPct}% do contratado` : `Demand peak at ${a.peakPct}% of contracted`;
-    case "sec_drift":
-      return pt ? `kWh por unidade de ${product} subiu ${a.driftPct}%` : `kWh per unit of ${product} up ${a.driftPct}%`;
   }
 }
 
-export function anomalyHint(a: Anomaly, lang: Lang, lineKind: "production" | "utility"): string {
+export function anomalyEvidence(a: Anomaly, lang: Lang, fmt: Fmt): string {
   const pt = lang === "pt";
+  const kw = fmt.num(a.excessKw);
   switch (a.kind) {
     case "baseload":
       return pt
-        ? `Carga ${Math.round(((a.ratio ?? 1) - 1) * 100)}% acima da linha de base, inclusive à noite. Padrão típico de vazamento de ar comprimido ou chiller sem controle de setpoint.`
-        : `Load ${Math.round(((a.ratio ?? 1) - 1) * 100)}% above baseline, including at night. Typical of a compressed-air leak or a chiller running without setpoint control.`;
-    case "excess":
-      return pt ? "Durante a produção, a linha consumiu mais que o padrão das últimas 4 semanas." : "While producing, the line used more than its 4-week pattern.";
-    case "idle_running":
+        ? `Toda noite a fábrica está puxando cerca de ${kw} kW a mais que o normal para o horário. Esse padrão costuma ser vazamento de ar comprimido ou equipamento de utilidades sem controle.`
+        : `Every night the plant draws about ${kw} kW more than usual for that hour. That pattern usually means a compressed-air leak or a utility running without control.`;
+    case "off_hours":
       return pt
-        ? `O ERP não registra produção nessas horas, mas a carga ficou ${a.ratio}× acima do consumo em espera. Verifique se o equipamento foi mantido aquecido/energizado sem necessidade.`
-        : `The ERP shows no production in these hours, yet load was ${a.ratio}× standby. Check whether the asset was kept hot/energised unnecessarily.`;
+        ? `Com a fábrica parada, a curva ficou ${kw} kW acima do normal por ${a.hours} horas seguidas. Algo grande ficou ligado.`
+        : `With the plant stopped, the curve stayed ${kw} kW above normal for ${a.hours} hours straight. Something big was left on.`;
+    case "excess":
+      return pt ? `Durante a produção, a fábrica consumiu ${kw} kW acima do próprio padrão.` : `During production the plant drew ${kw} kW above its own pattern.`;
     case "demand_peak":
       return pt
-        ? `Várias cargas coincidiram. Escalonar partidas ou usar o BESS para cortar o pico evita multa de ultrapassagem.`
-        : `Several loads coincided. Staggering start-ups or discharging the BESS would shave this peak and avoid demand penalties.`;
-    case "sec_drift":
-      return lineKind === "production"
-        ? pt
-          ? "A linha está gastando mais energia para produzir a mesma quantidade. Causas comuns: desgaste de matriz/ferramenta, refugo maior, temperatura de processo acima do setpoint."
-          : "The line needs more energy for the same output. Common causes: die/tool wear, higher scrap, process temperature above setpoint."
-        : "";
+        ? `Várias cargas coincidiram e a demanda chegou a ${fmt.num(a.peakKw ?? 0)} kW. Escalonar partidas ou usar o BESS no horário evita multa de ultrapassagem.`
+        : `Several loads coincided and demand reached ${fmt.num(a.peakKw ?? 0)} kW. Staggering start-ups or discharging the BESS avoids a demand penalty.`;
   }
+}
+
+function suspectLine(s: Suspect, lang: Lang) {
+  return `- **${s.machine.nome}**: ${pct(s.probability)}`;
+}
+
+function confirmAction(a: Anomaly, ctx: CopilotCtx): AgentAction | undefined {
+  if (ticketOf(a, ctx)) return undefined; // already asked
+  const { suspects } = suspectsFor(a, ctx.machines);
+  if (!suspects.length) return undefined;
+  const pt = ctx.lang === "pt";
+  const when = ctx.fmt.dateTime(a.start);
+  const title = pt ? `Confirmar: ${anomalyTitle(a, "pt").toLowerCase()} (${when})` : `Confirm: ${anomalyTitle(a, "en").toLowerCase()} (${when})`;
+  const list = suspects.map((s) => `${s.machine.nome} (${pct(s.probability)})`).join(", ");
+  const cost = a.annualizedCost > 0 ? ctx.fmt.money(a.annualizedCost) : null;
+  const body = pt
+    ? `[Faísca] ${anomalyEvidence(a, "pt", ctx.fmt)} Pela curva e pelo cadastro, meus suspeitos são: ${list}.${cost ? ` Impacto estimado: ${cost} por ano.` : ""} Você consegue confirmar qual foi? É só tocar na máquina aqui no chamado.`
+    : `[Faísca] ${anomalyEvidence(a, "en", ctx.fmt)} From the curve and the register, my suspects are: ${list}.${cost ? ` Estimated impact: ${cost} a year.` : ""} Can you confirm which one it was? Just tap the machine here in the ticket.`;
+  return {
+    kind: "confirm_ticket",
+    label: pt ? "Pedir confirmação ao setor" : "Ask the sector to confirm",
+    title,
+    body,
+    anomalyId: a.id,
+    suspects: suspects.map((s) => ({ maquina_id: s.machine.id, nome: s.machine.nome, prob: Math.round(s.probability * 100) })),
+  };
 }
 
 // ───────────────────────── Faísca's voice ─────────────────────────
-// Sharp and direct: one short line of attitude, then the numbers. No fluff.
+// Sharp and direct: one short line of attitude, then the numbers.
 
 const OPENERS: Record<Intent, { en: string[]; pt: string[] }> = {
-  why: {
-    pt: ["Fui atrás do culpado.", "Conta subindo sem motivo comigo não passa."],
-    en: ["I went after the culprit.", "A bill going up for no reason doesn't get past me."],
-  },
-  waste: {
-    pt: ["Achei dinheiro escapando. Anota aí.", "Desperdício é meu assunto preferido."],
-    en: ["Found money leaking. Write this down.", "Waste is my favourite subject."],
-  },
-  forecast: {
-    pt: ["Olhei a agenda do ERP e fiz as contas.", "Futuro eu não adivinho, eu calculo."],
-    en: ["I checked the ERP schedule and ran the numbers.", "I don't guess the future, I calculate it."],
-  },
-  idle: {
-    pt: ["Máquina parada também come energia. Olha quanto:"],
-    en: ["Idle machines still eat power. Here's how much:"],
-  },
-  explain: {
-    pt: ["Esse eu resolveria hoje.", "Vamos direto ao ponto."],
-    en: ["I'd fix this one today.", "Straight to the point."],
-  },
-  greeting: {
-    pt: ["Fala! Sou o Faísca. Leio seus medidores e o ERP e aponto onde a conta está vazando."],
-    en: ["Hey, I'm Faísca. I read your meters and your ERP and point out where the bill is leaking."],
-  },
+  why: { pt: ["Fui atrás do culpado.", "Conta subindo sem motivo comigo não passa."], en: ["I went after the culprit.", "A bill going up for no reason doesn't get past me."] },
+  waste: { pt: ["Achei dinheiro escapando. Anota aí.", "Desperdício é meu assunto preferido."], en: ["Found money leaking. Write this down.", "Waste is my favourite subject."] },
+  forecast: { pt: ["Olhei o padrão das últimas semanas e fiz as contas.", "Futuro eu não adivinho, eu calculo."], en: ["I checked the last weeks' pattern and ran the numbers.", "I don't guess the future, I calculate it."] },
+  machines: { pt: ["Pelo cadastro e pela curva, a conta se divide assim:"], en: ["From the register and the curve, the bill splits like this:"] },
+  explain: { pt: ["Esse eu resolveria hoje.", "Vamos direto ao ponto."], en: ["I'd fix this one today.", "Straight to the point."] },
+  greeting: { pt: ["Fala! Sou o Faísca. Leio a curva de consumo da fábrica e aponto onde a conta está vazando."], en: ["Hey, I'm Faísca. I read the plant's consumption curve and point out where the bill is leaking."] },
   unknown: {
-    pt: ["Essa foge do meu painel. Eu entendo de consumo, desperdício, pico de demanda e máquina parada. Enquanto isso, o resumo:"],
-    en: ["That's outside my panel. I'm good with consumption, waste, peak demand and idle machines. Meanwhile, here's the summary:"],
+    pt: ["Essa foge do meu painel. Eu entendo de consumo, desperdício, máquinas e pico de demanda. Enquanto isso, o resumo:"],
+    en: ["That's outside my panel. I'm good with consumption, waste, machines and peak demand. Meanwhile, here's the summary:"],
   },
 };
 
@@ -142,217 +161,162 @@ function pick<T>(xs: T[], seed: string) {
 function voice(a: CopilotAnswer, question: string, lang: Lang): CopilotAnswer {
   if (!a.intent) return a;
   const opener = pick(OPENERS[a.intent][lang], question);
-  const nudge = a.actions?.length ? (lang === "pt" ? "Quer que eu abra o chamado?" : "Want me to open the ticket?") : "";
+  const nudge = a.actions?.length ? (lang === "pt" ? "Quer que eu pergunte para o setor?" : "Want me to ask the sector?") : "";
   return { ...a, text: [opener, a.text, nudge].filter(Boolean).join("\n") };
 }
 
-function ticketFor(a: Anomaly, empresaId: number, lang: Lang, fmt: Fmt): AgentAction {
-  const plant = getPlant(empresaId)!.plant;
-  const line = plant.lines.find((l) => l.id === a.lineId)!;
-  const prod = a.sku ? productStats(empresaId, 30).find((p) => p.sku === a.sku) : undefined;
-  const title = anomalyTitle(a, lang, line.name[lang], prod?.name[lang]);
-  const cost = a.annualizedCost > 0 ? fmt.money(a.annualizedCost) : null;
-  const body =
-    lang === "pt"
-      ? `[Faísca] ${anomalyHint(a, lang, line.kind)} Detectado em ${fmt.dateTime(a.start)}.${cost ? ` Impacto estimado: ${cost} por ano.` : ""} Me avisa quando resolver que eu confirmo nas próximas leituras.`
-      : `[Faísca] ${anomalyHint(a, lang, line.kind)} Detected on ${fmt.dateTime(a.start)}.${cost ? ` Estimated impact: ${cost} per year.` : ""} Let me know when it's fixed and I'll confirm it in the next readings.`;
-  return { kind: "ticket", label: lang === "pt" ? "Abrir chamado" : "Open ticket", title, body };
-}
-
-/** Faísca speaks first: the most expensive open problem, with an action ready. */
-export function greeting(empresaId: number, lang: Lang, fmt: Fmt, firstName?: string): CopilotAnswer {
-  const top = detectAnomalies(empresaId).find((a) => a.annualizedCost > 0);
-  const hi = lang === "pt" ? `Fala${firstName ? `, ${firstName}` : ""}.` : `Hey${firstName ? ` ${firstName}` : ""}.`;
+/** Faísca speaks first: the most expensive open problem, with its suspects. */
+export function greeting(ctx: CopilotCtx): CopilotAnswer {
+  const { lang, fmt, firstName, empresaId } = ctx;
+  const pt = lang === "pt";
+  const hi = pt ? `Fala${firstName ? `, ${firstName}` : ""}.` : `Hey${firstName ? ` ${firstName}` : ""}.`;
+  const withCost = detectAnomalies(empresaId).filter((a) => a.annualizedCost > 0);
+  const top = withCost.find((a) => !ticketOf(a, ctx));
   if (!top) {
-    return { text: lang === "pt" ? `${hi} Tudo limpo por aqui. Pode perguntar.` : `${hi} All clean here. Ask away.`, intent: "greeting", source: "local" };
+    const text = withCost.length
+      ? pt
+        ? `${hi} Todos os problemas que achei já estão com a equipe. Pode perguntar.`
+        : `${hi} Every problem I found is already with the team. Ask away.`
+      : pt
+      ? `${hi} Tudo limpo por aqui. Pode perguntar.`
+      : `${hi} All clean here. Ask away.`;
+    return { text, intent: "greeting", source: "local" };
   }
-  const line = getPlant(empresaId)!.plant.lines.find((l) => l.id === top.lineId)!;
-  const prod = top.sku ? productStats(empresaId, 30).find((p) => p.sku === top.sku) : undefined;
-  const title = anomalyTitle(top, lang, line.name[lang], prod?.name[lang]);
-  const text =
-    lang === "pt"
-      ? `${hi} Antes de você perguntar: **${title}**, desde ${fmt.date(top.start)}, e isso custa **${fmt.money(top.annualizedCost)} por ano** se ninguém mexer.\nQuer que eu abra o chamado?`
-      : `${hi} Before you ask: **${title}**, since ${fmt.date(top.start)}, and that's **${fmt.money(top.annualizedCost)} a year** if nobody touches it.\nWant me to open the ticket?`;
-  return { text, intent: "greeting", actions: [ticketFor(top, empresaId, lang, fmt)], source: "local" };
+  const { suspects } = suspectsFor(top, ctx.machines, 1);
+  const s = suspects[0];
+  const text = pt
+    ? `${hi} Antes de você perguntar: **${anomalyTitle(top, "pt").toLowerCase()}**, desde ${fmt.date(top.start)}, e isso custa **${fmt.money(top.annualizedCost)} por ano**.${s ? ` Meu principal suspeito é o **${s.machine.nome}** (${pct(s.probability)}).` : ""}\nQuer que eu pergunte para o setor?`
+    : `${hi} Before you ask: **${anomalyTitle(top, "en").toLowerCase()}**, since ${fmt.date(top.start)}, and that's **${fmt.money(top.annualizedCost)} a year**.${s ? ` My main suspect is the **${s.machine.nome}** (${pct(s.probability)}).` : ""}\nWant me to ask the sector?`;
+  const action = confirmAction(top, ctx);
+  return { text, intent: "greeting", actions: action ? [action] : undefined, source: "local" };
 }
 
-function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt): CopilotAnswer {
+// ───────────────────────── local reasoning ─────────────────────────
+
+function localAnswer(question: string, ctx: CopilotCtx): CopilotAnswer {
+  const { empresaId, lang, fmt, machines } = ctx;
   const q = norm(question);
   const pt = lang === "pt";
-  const info = getPlant(empresaId)!;
-  const L = (x: { en: string; pt: string }) => x[lang];
-  const prodName = (sku?: string) => {
-    if (!sku) return undefined;
-    const p = productStats(empresaId, 30).find((x) => x.sku === sku);
-    return p ? L(p.name) : sku;
-  };
+  const anomalies = detectAnomalies(empresaId);
 
-  // ── explain a specific anomaly (from the "Explain" button)
+  // explain one anomaly (from the anomalies screen)
   if (q.startsWith("explain:") || q.startsWith("explique:")) {
     const wanted = q.slice(q.indexOf(":") + 1).trim();
-    const a = detectAnomalies(empresaId).find((x) => {
-      const prod = x.sku ? productStats(empresaId, 30).find((p) => p.sku === x.sku) : undefined;
-      return norm(anomalyTitle(x, lang, L(lineName(empresaId, x.lineId)), prod ? L(prod.name) : undefined)) === wanted;
-    });
+    const a = anomalies.find((x) => wanted.startsWith(norm(anomalyTitle(x, lang)))) ?? anomalies[0];
     if (a) {
-      const line = info.plant.lines.find((l) => l.id === a.lineId)!;
-      const actions: Record<Anomaly["kind"], { en: string[]; pt: string[] }> = {
-        baseload: {
-          en: ["Run an ultrasonic leak survey on the compressed-air network this week", "Check chiller setpoints and schedules against the shift plan", "Set an alert if night baseload exceeds the baseline by 15%"],
-          pt: ["Fazer inspeção ultrassônica de vazamentos na rede de ar comprimido esta semana", "Conferir setpoints e horários dos chillers com o plano de turnos", "Criar alerta se a carga noturna passar 15% da linha de base"],
-        },
-        excess: {
-          en: ["Compare process parameters with the best day of the period", "Check for mechanical friction or motor issues on the line"],
-          pt: ["Comparar parâmetros de processo com o melhor dia do período", "Verificar atrito mecânico ou problema de motor na linha"],
-        },
-        idle_running: {
-          en: ["Add a shutdown/hold procedure for non-production days", "Use the ERP schedule to switch the asset to standby automatically", "Assign an owner and confirm in the internal chat"],
-          pt: ["Criar procedimento de desligamento/espera para dias sem produção", "Usar a programação do ERP para colocar o equipamento em standby automaticamente", "Definir um responsável e confirmar pelo chat interno"],
-        },
-        demand_peak: {
-          en: ["Stagger start-ups of the largest loads by 15–30 minutes", "Schedule the BESS to discharge in the forecast peak window", "Set an alert at 90% of contracted demand"],
-          pt: ["Escalonar a partida das maiores cargas em 15–30 minutos", "Programar o BESS para descarregar na janela de pico prevista", "Criar alerta em 90% da demanda contratada"],
-        },
-        sec_drift: {
-          en: ["Inspect die/tool wear and maintenance history", "Compare scrap rate in the ERP with the baseline weeks", "Check process temperature vs. setpoint"],
-          pt: ["Inspecionar desgaste de matriz/ferramenta e histórico de manutenção", "Comparar a taxa de refugo no ERP com as semanas de referência", "Verificar temperatura de processo vs. setpoint"],
-        },
-      };
+      const { suspects, other } = suspectsFor(a, machines);
       const parts = [
-        `**${anomalyTitle(a, lang, L(line.name), a.sku ? L(productStats(empresaId, 30).find((p) => p.sku === a.sku)!.name) : undefined)}**`,
-        anomalyHint(a, lang, line.kind),
-        a.kind === "demand_peak"
+        `**${anomalyTitle(a, lang)}**`,
+        anomalyEvidence(a, lang, fmt),
+        pt ? "A curva sozinha não diz qual máquina foi. Cruzando com o cadastro (potência, horário, tipo) e com o que a equipe já confirmou antes:" : "The curve alone can't say which machine it was. Crossing it with the register (power, schedule, type) and what the team confirmed before:",
+        ...suspects.map((s) => suspectLine(s, lang)),
+        `- ${pt ? "Outras cargas" : "Other loads"}: ${pct(other)}`,
+        a.annualizedCost > 0
           ? pt
-            ? `Pico de **${fmt.num(a.peakKw ?? 0)} kW** em ${fmt.dateTime(a.start)}, ${a.peakPct}% da demanda contratada.`
-            : `Peak of **${fmt.num(a.peakKw ?? 0)} kW** on ${fmt.dateTime(a.start)}, ${a.peakPct}% of contracted demand.`
-          : pt
-          ? `Excesso até agora: **${fmt.energy(a.excessKwh)}** (${fmt.money(a.excessCost)}). Impacto anual estimado: **${fmt.money(a.annualizedCost)}**.`
-          : `Excess so far: **${fmt.energy(a.excessKwh)}** (${fmt.money(a.excessCost)}). Estimated annual impact: **${fmt.money(a.annualizedCost)}**.`,
-        pt ? "Próximos passos sugeridos:" : "Suggested next steps:",
-        ...actions[a.kind][lang].map((s) => `- ${s}`),
-      ];
-      return { text: parts.join("\n"), intent: "explain", actions: [ticketFor(a, empresaId, lang, fmt)], source: "local" };
+            ? `Impacto estimado: **${fmt.money(a.annualizedCost)} por ano**.`
+            : `Estimated impact: **${fmt.money(a.annualizedCost)} a year**.`
+          : "",
+      ].filter(Boolean);
+      const action = confirmAction(a, ctx);
+      return { text: parts.join("\n"), intent: "explain", actions: action ? [action] : undefined, source: "local" };
     }
   }
 
-  // ── why did consumption change
-  if (has(q, ["why", "por que", "porque", "subiu", "aumentou", "increase", "went up", "go up", "rise", "rose", "variou", "changed", "mudou"])) {
+  // why did consumption change
+  if (has(q, ["why", "por que", "porque", "subiu", "aumentou", "increase", "went up", "go up", "rise", "rose", "mudou", "changed"])) {
     const s = dailySeries(empresaId, 14);
-    const last = s.slice(7).reduce((a, p) => a + p.kwh, 0);
-    const prev = s.slice(0, 7).reduce((a, p) => a + p.kwh, 0);
-    const outLast = s.slice(7).reduce((a, p) => a + p.output, 0);
-    const outPrev = s.slice(0, 7).reduce((a, p) => a + p.output, 0);
-    const linesLast = lineStats(empresaId, 7);
-    const linesPrev = lineStats(empresaId, 14).map((l) => ({ ...l, kwh: l.kwh - (linesLast.find((x) => x.id === l.id)?.kwh ?? 0) }));
-    const deltas = linesLast
-      .map((l) => ({ l, d: l.kwh - (linesPrev.find((x) => x.id === l.id)?.kwh ?? 0) }))
-      .sort((a, b) => b.d - a.d);
-    const change = ((last - prev) / prev) * 100;
-    const outChange = outPrev ? ((outLast - outPrev) / outPrev) * 100 : 0;
-    const top = deltas.filter((x) => x.d > 0).slice(0, 2);
-    const anomalies = detectAnomalies(empresaId)
-      .filter((a) => top.some((t) => t.l.id === a.lineId) && a.kind !== "demand_peak")
-      .sort((a, b) => top.findIndex((t) => t.l.id === a.lineId) - top.findIndex((t) => t.l.id === b.lineId));
-    const parts: string[] = [];
-    parts.push(
+    const sum = (xs: typeof s, k: "kwh" | "output") => xs.reduce((a, p) => a + p[k], 0);
+    const change = ((sum(s.slice(7), "kwh") - sum(s.slice(0, 7), "kwh")) / sum(s.slice(0, 7), "kwh")) * 100;
+    const outChange = ((sum(s.slice(7), "output") - sum(s.slice(0, 7), "output")) / Math.max(sum(s.slice(0, 7), "output"), 1)) * 100;
+    const recent = anomalies.filter((a) => new Date(a.start).getTime() > Date.now() - 8 * 86400_000 && a.kind !== "demand_peak");
+    const parts = [
       pt
-        ? `Nos últimos 7 dias a planta consumiu **${fmt.energy(last)}**, ${fmt.pct(change)} em relação aos 7 dias anteriores, enquanto a produção da linha principal variou ${fmt.pct(outChange)}.`
-        : `In the last 7 days the plant used **${fmt.energy(last)}**, ${fmt.pct(change)} vs. the previous 7 days, while output on the main line changed ${fmt.pct(outChange)}.`,
-    );
-    if (top.length) {
-      parts.push(pt ? "Maiores contribuições para a variação:" : "Biggest contributors to the change:");
-      for (const t of top) parts.push(`- **${L(t.l.name)}**: +${fmt.energy(t.d)}`);
+        ? `Nos últimos 7 dias a fábrica consumiu **${fmt.energy(sum(s.slice(7), "kwh"))}**, ${fmt.pct(change)} em relação à semana anterior, enquanto a produção variou ${fmt.pct(outChange)}.`
+        : `In the last 7 days the plant used **${fmt.energy(sum(s.slice(7), "kwh"))}**, ${fmt.pct(change)} vs. the week before, while output changed ${fmt.pct(outChange)}.`,
+    ];
+    if (recent.length) {
+      parts.push(pt ? "O que explica a diferença:" : "What explains the gap:");
+      for (const a of recent) parts.push(`- ${anomalyTitle(a, lang)}: ${fmt.energy(a.excessKwh)} (${culprit(a, ctx)})`);
+    } else if (outChange > 0) {
+      parts.push(pt ? "O aumento acompanha a produção: não vejo desperdício." : "The increase follows production: I see no waste.");
     }
-    if (anomalies.length) {
-      const a = anomalies[0];
-      parts.push(
-        pt
-          ? `Causa provável: ${anomalyTitle(a, lang, L(lineName(empresaId, a.lineId)), prodName(a.sku))} (desde ${fmt.date(a.start)}). ${a.ongoing ? "Se continuar" : "Se repetir todo mês"}, custa cerca de **${fmt.money(a.annualizedCost)} por ano**.`
-          : `Likely cause: ${anomalyTitle(a, lang, L(lineName(empresaId, a.lineId)), prodName(a.sku))} (since ${fmt.date(a.start)}). ${a.ongoing ? "If it continues" : "If it repeats monthly"}, it costs about **${fmt.money(a.annualizedCost)} per year**.`,
-      );
-    } else if (change > 0 && outChange > 0) {
-      parts.push(pt ? "O aumento acompanha a produção: não há sinal de desperdício." : "The increase follows production; no sign of waste.");
-    }
-    return { text: parts.join("\n"), intent: "why", actions: anomalies[0] ? [ticketFor(anomalies[0], empresaId, lang, fmt)] : undefined, links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
+    const next = recent.find((a) => !ticketOf(a, ctx));
+    const action = next ? confirmAction(next, ctx) : undefined;
+    return { text: parts.join("\n"), intent: "why", actions: action ? [action] : undefined, links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
   }
 
-  // ── waste / savings
-  if (has(q, ["waste", "wasting", "desperd", "save", "saving", "econom", "oportunidad", "opportunit", "reduce cost", "reduzir custo", "perda", "loss"])) {
-    const list = detectAnomalies(empresaId).filter((a) => a.annualizedCost > 0).slice(0, 4);
+  // waste / savings
+  if (has(q, ["waste", "wasting", "desperd", "save", "saving", "econom", "oportunidad", "opportunit", "perda", "loss", "vazando", "leak"])) {
+    const list = anomalies.filter((a) => a.annualizedCost > 0);
     const total = list.reduce((a, x) => a + x.annualizedCost, 0);
     const k = kpis(empresaId);
     const parts = [
       pt
-        ? `Encontrei **${list.length} oportunidades** que somam cerca de **${fmt.money(total)} por ano** (${fmt.num((total / (k.cost * 12)) * 100, 1)}% da conta de energia).`
-        : `I found **${list.length} opportunities** worth about **${fmt.money(total)} per year** (${fmt.num((total / (k.cost * 12)) * 100, 1)}% of the energy bill).`,
+        ? `Encontrei **${list.length} vazamentos de dinheiro** que somam cerca de **${fmt.money(total)} por ano** (${fmt.num((total / (k.cost * 12)) * 100, 1)}% da conta).`
+        : `I found **${list.length} money leaks** worth about **${fmt.money(total)} a year** (${fmt.num((total / (k.cost * 12)) * 100, 1)}% of the bill).`,
     ];
-    for (const a of list) parts.push(`- ${anomalyTitle(a, lang, L(lineName(empresaId, a.lineId)), prodName(a.sku))}: **${fmt.money(a.annualizedCost)}/${pt ? "ano" : "yr"}**`);
-    parts.push(
-      pt
-        ? `Além disso, ${fmt.num(k.idlePct, 1)}% da energia do mês foi consumida com as linhas paradas (${fmt.energy(k.idleKwh)}).`
-        : `On top of that, ${fmt.num(k.idlePct, 1)}% of this month's energy was used while lines were idle (${fmt.energy(k.idleKwh)}).`,
-    );
-    return { text: parts.join("\n"), intent: "waste", actions: list[0] ? [ticketFor(list[0], empresaId, lang, fmt)] : undefined, links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
+    for (const a of list) parts.push(`- ${anomalyTitle(a, lang)}: **${fmt.money(a.annualizedCost)}/${pt ? "ano" : "yr"}**, ${culprit(a, ctx)}`);
+    const next = list.find((a) => !ticketOf(a, ctx));
+    const action = next ? confirmAction(next, ctx) : undefined;
+    return { text: parts.join("\n"), intent: "waste", actions: action ? [action] : undefined, links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
   }
 
-  // ── forecast / peak
-  if (has(q, ["forecast", "previs", "next week", "proxima semana", "proximos", "next 7", "peak", "pico", "demand", "demanda", "amanha", "tomorrow"])) {
+  // forecast / peak
+  if (has(q, ["forecast", "previs", "next week", "proxima semana", "proximos", "next 7", "peak", "pico", "demand", "demanda", "amanha", "tomorrow", "multa", "penalty"])) {
     const f = forecast(empresaId);
     const parts = [
+      pt ? `Para os próximos 7 dias prevejo **${fmt.energy(f.kwhTotal)}** (≈ ${fmt.money(f.costTotal)}).` : `For the next 7 days I forecast **${fmt.energy(f.kwhTotal)}** (≈ ${fmt.money(f.costTotal)}).`,
       pt
-        ? `Para os próximos 7 dias, com base nas ordens planejadas no ERP, prevejo **${fmt.energy(f.kwhTotal)}** (≈ ${fmt.money(f.costTotal)}).`
-        : `For the next 7 days, based on the orders planned in the ERP, I forecast **${fmt.energy(f.kwhTotal)}** (≈ ${fmt.money(f.costTotal)}).`,
-      pt
-        ? `Pico mais provável: **${fmt.num(f.peak.kw)} kW** em ${fmt.dateTime(f.peak.ts)}, podendo chegar a ${fmt.num(f.peak.high)} kW (${fmt.num(f.peakPct, 1)}% da demanda contratada de ${fmt.num(f.contractedKw)} kW).`
-        : `Most likely peak: **${fmt.num(f.peak.kw)} kW** on ${fmt.dateTime(f.peak.ts)}, possibly up to ${fmt.num(f.peak.high)} kW (${fmt.num(f.peakPct, 1)}% of the ${fmt.num(f.contractedKw)} kW contracted demand).`,
+        ? `Pico mais provável: **${fmt.num(f.peak.kw)} kW** em ${fmt.dateTime(f.peak.ts)}, podendo chegar a ${fmt.num(f.peak.high)} kW (${fmt.num(f.peakPct, 0)}% dos ${fmt.num(f.contractedKw)} kW contratados).`
+        : `Most likely peak: **${fmt.num(f.peak.kw)} kW** on ${fmt.dateTime(f.peak.ts)}, possibly up to ${fmt.num(f.peak.high)} kW (${fmt.num(f.peakPct, 0)}% of the ${fmt.num(f.contractedKw)} kW contracted).`,
       f.peakPct > 90
-        ? pt
-          ? "Recomendo escalonar as partidas das prensas nesse horário ou programar o BESS para descarregar."
-          : "I recommend staggering press start-ups in that window or scheduling the BESS to discharge."
-        : pt
-        ? "Há folga em relação à demanda contratada."
-        : "There is headroom against the contracted demand.",
+        ? pt ? "Escalona a partida do forno nesse horário ou programa o BESS para descarregar." : "Stagger the furnace start-up in that window or schedule the BESS to discharge."
+        : pt ? "Há folga em relação à demanda contratada." : "There is headroom against the contracted demand.",
     ];
     return { text: parts.join("\n"), intent: "forecast", links: [{ label: pt ? "Ver previsão" : "Open forecast", href: "/anomalies#forecast" }], source: "local" };
   }
 
-  // ── idle
-  if (has(q, ["idle", "ocios", "parad", "standby", "weekend", "fim de semana", "noite", "night"])) {
-    const lines = lineStats(empresaId, 30).sort((a, b) => b.idleKwh - a.idleKwh);
-    const parts = [pt ? "Energia consumida fora de produção (30 dias):" : "Energy used outside production (30 days):"];
-    for (const l of lines.slice(0, 4)) parts.push(`- **${L(l.name)}**: ${fmt.energy(l.idleKwh)} (${fmt.num(l.idlePct, 1)}%)`);
-    return { text: parts.join("\n"), intent: "idle", links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
+  // which machine weighs most
+  if (has(q, ["maquina", "machine", "equipamento", "equipment", "pesa", "weighs", "consome mais", "uses most", "quem gasta", "biggest"])) {
+    const shares = estimatedShares(empresaId, machines).slice(0, 5);
+    const parts = [
+      ...shares.map((x) => `- **${x.machine.nome}**: ~${pct(x.share)} (${fmt.money(x.cost)}/${pt ? "mês" : "month"})`),
+      pt
+        ? "É uma estimativa pelo cadastro (potência × horário), ajustada ao total medido. Se quiser certeza numa máquina específica, um medidor nela fecha a dúvida."
+        : "This is an estimate from the register (power × schedule), scaled to the measured total. For certainty on one machine, a meter on it settles it.",
+    ];
+    return { text: parts.join("\n"), intent: "machines", links: [{ label: pt ? "Ver máquinas" : "Open machines", href: "/maquinas" }], source: "local" };
   }
 
-  // ── summary (default for greetings / "how are we doing")
+  // summary (greetings and anything else)
   const k = kpis(empresaId);
-  const top = detectAnomalies(empresaId)[0];
+  const info = getPlant(empresaId)!;
   const parts = [
     pt
-      ? `Resumo de ${info.plant.name} (30 dias): **${fmt.energy(k.kwh)}**, ${fmt.money(k.cost)}. Pico de ${fmt.num(k.peakKw)} kW (${fmt.num((k.peakKw / k.contractedKw) * 100, 0)}% do contratado).`
-      : `${info.plant.name}, last 30 days: **${fmt.energy(k.kwh)}**, ${fmt.money(k.cost)}. Peak ${fmt.num(k.peakKw)} kW (${fmt.num((k.peakKw / k.contractedKw) * 100, 0)}% of contracted).`,
+      ? `${info.plant.name}, últimos 30 dias: **${fmt.energy(k.kwh)}**, ${fmt.money(k.cost)}. Pico de ${fmt.num(k.peakKw)} kW (${fmt.num((k.peakKw / k.contractedKw) * 100, 0)}% do contratado). **${fmt.money(k.savingsAnnual)} por ano** em desperdício identificado.`
+      : `${info.plant.name}, last 30 days: **${fmt.energy(k.kwh)}**, ${fmt.money(k.cost)}. Peak ${fmt.num(k.peakKw)} kW (${fmt.num((k.peakKw / k.contractedKw) * 100, 0)}% of contracted). **${fmt.money(k.savingsAnnual)} a year** of waste identified.`,
   ];
-  if (top) parts.push(pt ? `Prioridade nº 1: ${anomalyTitle(top, lang, L(lineName(empresaId, top.lineId)), prodName(top.sku))}.` : `Priority #1: ${anomalyTitle(top, lang, L(lineName(empresaId, top.lineId)), prodName(top.sku))}.`);
-  parts.push(pt ? "Você pode me perguntar sobre variação de consumo, desperdício, previsão de pico ou consumo com as linhas paradas." : "Ask me about consumption changes, waste, peak forecast or energy used while lines are idle.");
-  const greeting = has(q, ["oi", "ola", "hello", "hi ", "hey", "fala", "bom dia", "boa tarde", "boa noite", "good morning", "resumo", "summary", "como estamos", "how are we"]) || q.length < 4;
-  return { text: parts.join("\n"), intent: greeting ? "greeting" : "unknown", actions: top ? [ticketFor(top, empresaId, lang, fmt)] : undefined, source: "local" };
+  const greetingQ = has(q, ["oi", "ola", "hello", "hi ", "hey", "fala", "bom dia", "boa tarde", "boa noite", "resumo", "summary", "como estamos", "how are we"]) || q.length < 4;
+  return { text: parts.join("\n"), intent: greetingQ ? "greeting" : "unknown", source: "local" };
 }
 
 /** Compact context sent to an external model, so it reasons over the same numbers. */
-export function copilotContext(empresaId: number) {
-  const info = getPlant(empresaId)!;
+export function copilotContext(ctx: CopilotCtx) {
+  const info = getPlant(ctx.empresaId)!;
   return {
-    plant: { name: info.plant.name, country: info.plant.country, sector: info.plant.sector.en, contractedKw: info.plant.contractedKw },
+    plant: { name: info.plant.name, country: info.plant.country, contractedKw: info.plant.contractedKw },
     currency: info.region.currency,
     tariffPerKwh: info.region.tariffPerKwh,
-    kpis30d: kpis(empresaId),
-    products: productStats(empresaId, 30).map(({ name, unit, ...p }) => ({ ...p, name: name.en, unit: unit.en })),
-    anomalies: detectAnomalies(empresaId).slice(0, 8),
-    forecast7d: (({ points: _p, ...rest }) => rest)(forecast(empresaId)),
+    kpis30d: kpis(ctx.empresaId),
+    anomalies: detectAnomalies(ctx.empresaId).map(({ slots: _s, ...a }) => ({
+      ...a,
+      suspects: suspectsFor(a as Anomaly, ctx.machines).suspects.map((s) => ({ machine: s.machine.nome, probability: Math.round(s.probability * 100) })),
+    })),
+    forecast7d: (({ points: _p, ...rest }) => rest)(forecast(ctx.empresaId)),
   };
 }
 
-export async function ask(question: string, empresaId: number, lang: Lang, fmt: Fmt): Promise<CopilotAnswer> {
+export async function ask(question: string, ctx: CopilotCtx): Promise<CopilotAnswer> {
   const url = import.meta.env.VITE_COPILOT_URL as string | undefined;
   if (url) {
     try {
@@ -361,10 +325,10 @@ export async function ask(question: string, empresaId: number, lang: Lang, fmt: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           question,
-          lang,
+          lang: ctx.lang,
           persona:
-            "You are Faísca, EFFIO's energy agent for industrial plants. Sharp and direct: one short line of attitude, then the numbers. Never invent figures: use only the context. Point to the most expensive problem and offer to open a ticket.",
-          context: copilotContext(empresaId),
+            "You are Faísca, EFFIO's energy agent for industrial plants. Sharp and direct: one short line of attitude, then the numbers. You only see the whole-plant curve, so name machine suspects with probabilities, never certainty, and offer to ask the sector to confirm. Never invent figures.",
+          context: copilotContext(ctx),
         }),
       });
       if (res.ok) {
@@ -375,5 +339,5 @@ export async function ask(question: string, empresaId: number, lang: Lang, fmt: 
       /* fall back to the local engine */
     }
   }
-  return voice(localAnswer(question, empresaId, lang, fmt), question, lang);
+  return voice(localAnswer(question, ctx), question, ctx.lang);
 }

@@ -1,3 +1,4 @@
+import { plantFor } from "@/industry/plants";
 /** Dados de demonstração do modo demo. Nada aqui vai para servidor nenhum. */
 
 export interface DbUsuario {
@@ -109,6 +110,12 @@ export interface DbChamado {
   alerta_id: number | null;
   created_at: string;
   resolvido_em: string | null;
+  /** EFFIO anomaly this ticket asks the sector to confirm */
+  anomalia_id?: string | null;
+  /** Faísca's machine suspects, with probability in % */
+  suspeitos?: { maquina_id: number; nome: string; prob: number }[] | null;
+  /** machine the team confirmed (or 0 = "none of these") */
+  confirmado_maquina_id?: number | null;
 }
 
 export interface DbMensagem {
@@ -135,6 +142,15 @@ export interface Db {
 }
 
 export const DEMO_EMAIL = "demo@effio.com.br";
+
+const BRANDS: Record<number, [string, string, number]> = {
+  1: ["Romi", "D 800", 2019],
+  2: ["Romi", "GL 240", 2017],
+  3: ["Inductotherm", "VIP", 2015],
+  4: ["Atlas Copco", "GA 75", 2020],
+  5: ["Carrier", "30XA", 2018],
+  13: ["Atlas Copco", "GA 55", 2021],
+};
 export const DEMO_SENHA = "effio123";
 
 // Gerador pseudoaleatório determinístico (os mesmos dados toda vez)
@@ -203,7 +219,7 @@ export function criarSeed(): Db {
   return {
     version: 1,
     seq: {
-      usuarios: 4, empresas: 3, setores: 4, maquinas: 5, contratos: 1,
+      usuarios: 4, empresas: 3, setores: 4, maquinas: 13, contratos: 1,
       bess: 3, consumo: consumo.length, chamados: 1, mensagens: 3,
     },
     usuarios: [
@@ -223,13 +239,14 @@ export function criarSeed(): Db {
       { id: 3, empresa_id: 1, nome: "Utilidades", categoria: "Utilidades", descricao: "Compressores e climatização", created_at: isoDaysAgo(55) },
       { id: 4, empresa_id: 1, nome: "Administrativo", categoria: "Administrativo", descricao: null, created_at: isoDaysAgo(55) },
     ],
-    maquinas: [
-      { id: 1, empresa_id: 1, setor_id: 1, nome: "Centro de Usinagem CNC 01", tipo_equipamento: "CNC", potencia_kw: 45, horario_inicio: "06:00", horario_fim: "22:00", dias_semana: ["SEG", "TER", "QUA", "QUI", "SEX"], marca: "Romi", modelo: "D 800", ano_fabricacao: 2019, observacoes: null, status: "ativo", confirmacoes_ia: 3, created_at: isoDaysAgo(50) },
-      { id: 2, empresa_id: 1, setor_id: 1, nome: "Torno CNC 02", tipo_equipamento: "Torno", potencia_kw: 22, horario_inicio: "06:00", horario_fim: "14:00", dias_semana: ["SEG", "TER", "QUA", "QUI", "SEX"], marca: "Romi", modelo: "GL 240", ano_fabricacao: 2017, observacoes: null, status: "ativo", confirmacoes_ia: 1, created_at: isoDaysAgo(50) },
-      { id: 3, empresa_id: 1, setor_id: 2, nome: "Forno de Indução", tipo_equipamento: "Forno", potencia_kw: 350, horario_inicio: "07:00", horario_fim: "17:00", dias_semana: ["SEG", "TER", "QUA", "QUI", "SEX"], marca: "Inductotherm", modelo: "VIP", ano_fabricacao: 2015, observacoes: "Evitar operar no horário de ponta", status: "ativo", confirmacoes_ia: 5, created_at: isoDaysAgo(50) },
-      { id: 4, empresa_id: 1, setor_id: 3, nome: "Compressor de Ar 01", tipo_equipamento: "Compressor", potencia_kw: 75, horario_inicio: "00:00", horario_fim: "23:59", dias_semana: ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"], marca: "Atlas Copco", modelo: "GA 75", ano_fabricacao: 2020, observacoes: null, status: "ativo", confirmacoes_ia: 0, created_at: isoDaysAgo(50) },
-      { id: 5, empresa_id: 1, setor_id: 3, nome: "Chiller Central", tipo_equipamento: "Climatização", potencia_kw: 120, horario_inicio: "08:00", horario_fim: "18:00", dias_semana: ["SEG", "TER", "QUA", "QUI", "SEX"], marca: "Carrier", modelo: "30XA", ano_fabricacao: 2018, observacoes: null, status: "manutencao", confirmacoes_ia: 0, created_at: isoDaysAgo(50) },
-    ],
+    // generated from the demo plant's register so the AI's suspects match what the client sees
+    maquinas: (plantFor(1)?.machines ?? []).map((m) => ({
+      id: m.id, empresa_id: 1, setor_id: m.sectorId, nome: m.name, tipo_equipamento: m.type, potencia_kw: m.kw,
+      horario_inicio: m.start, horario_fim: m.end, dias_semana: m.days,
+      marca: BRANDS[m.id]?.[0] ?? null, modelo: BRANDS[m.id]?.[1] ?? null, ano_fabricacao: BRANDS[m.id]?.[2] ?? null,
+      observacoes: m.id === 3 ? "Evitar operar no horário de ponta" : null,
+      status: "ativo", confirmacoes_ia: 0, created_at: isoDaysAgo(50),
+    })),
     contratos: [
       { id: 1, empresa_id: 1, preco_mwh: 245.5, modalidade_tarifaria: "TH_AZUL", tipo_energia: "I50", flexibilidade_pct: 10, demanda_ponta_kw: 1500, demanda_fora_ponta_kw: 1700, possui_irec: true, meta_esg_pct: 80, sazonalidade: {}, created_at: isoDaysAgo(45), updated_at: isoDaysAgo(45) },
     ],

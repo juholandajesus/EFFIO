@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { appLocale } from "@/i18n";
+import { appLocale, useT } from "@/i18n";
+import { FaiscaMark } from "@/components/faisca-mark";
 import { MessageSquare, Plus, Send, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,9 @@ interface Chamado {
   aberto_por: number;
   destinado_a: number;
   created_at: string;
+  anomalia_id?: string | null;
+  suspeitos?: { maquina_id: number; nome: string; prob: number }[] | null;
+  confirmado_maquina_id?: number | null;
 }
 
 interface Mensagem {
@@ -53,6 +57,7 @@ export default function Chat() {
   const [novoChamado, setNovoChamado] = useState({ titulo: "", destinado_a: "" });
   const [mensagem, setMensagem] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { t } = useT();
 
   const { data: chamados = [] } = useQuery<Chamado[]>({
     queryKey: ["chamados"],
@@ -142,6 +147,32 @@ export default function Chat() {
     },
   });
 
+  // the sector answers Faísca: which machine was it?
+  const confirmar = useMutation({
+    mutationFn: async (escolha: { id: number; nome: string } | null) => {
+      if (!chamadoAtivo) return;
+      const body = escolha
+        ? { conteudo: t("chat.confirmedMsg", { machine: escolha.nome }), confirma_maquina_id: escolha.id }
+        : { conteudo: t("chat.noneMsg"), nenhuma_suspeita: true };
+      const res = await fetch(`/api/chat/chamados/${chamadoAtivo.id}/mensagens`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      return escolha;
+    },
+    onSuccess: (escolha) => {
+      toast({ title: escolha ? t("chat.learnedToast", { machine: escolha.nome }) : t("chat.noneToast") });
+      qc.invalidateQueries({ queryKey: ["mensagens", chamadoAtivo?.id] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      qc.invalidateQueries({ queryKey: ["maquinas"] });
+    },
+    onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
+  });
+  // keep the open ticket in sync with the list (confirmation state changes)
+  const ativo = chamadoAtivo ? chamados.find((c) => c.id === chamadoAtivo.id) ?? chamadoAtivo : null;
+
   const usuarioNome = (id: number) => usuarios.find(u => u.id === id)?.nome ?? `#${id}`;
 
   return (
@@ -211,6 +242,37 @@ export default function Chat() {
                   )}
                 </div>
               </CardHeader>
+
+              {ativo?.suspeitos?.length ? (
+                <div className="border-b bg-muted/40 px-4 py-3" data-testid="suspects-panel">
+                  <div className="flex items-start gap-3">
+                    <FaiscaMark size={26} />
+                    <div className="min-w-0 flex-1">
+                      {ativo.confirmado_maquina_id == null ? (
+                        <>
+                          <p className="text-sm font-medium">{t("chat.whichOne")}</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {ativo.suspeitos.map((sp) => (
+                              <Button key={sp.maquina_id} size="sm" variant="outline" disabled={confirmar.isPending} onClick={() => confirmar.mutate({ id: sp.maquina_id, nome: sp.nome })} data-testid="confirm-machine">
+                                {sp.nome} <span className="ml-1 text-muted-foreground tabular-nums">{sp.prob}%</span>
+                              </Button>
+                            ))}
+                            <Button size="sm" variant="ghost" disabled={confirmar.isPending} onClick={() => confirmar.mutate(null)}>
+                              {t("chat.none")}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm">
+                          {ativo.confirmado_maquina_id
+                            ? t("chat.confirmedState", { machine: ativo.suspeitos.find((x) => x.maquina_id === ativo.confirmado_maquina_id)?.nome ?? "" })
+                            : t("chat.noneState")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
                 {mensagens.map(m => {

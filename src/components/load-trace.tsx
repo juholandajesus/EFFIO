@@ -33,7 +33,7 @@ export function LoadTrace({ empresaId = 1, compact = false, callouts }: { empres
     const first = new Date(series[0].ts).getTime();
     const seen = new Set<string>();
     return detectAnomalies(empresaId)
-      .filter((a) => a.kind !== "sec_drift")
+      .filter((a) => a.kind !== "excess")
       .map((a) => {
         const startIdx = Math.round((new Date(a.start).getTime() - first) / 3600_000);
         // land on the highest point of the event so the stop sits on the visible spike

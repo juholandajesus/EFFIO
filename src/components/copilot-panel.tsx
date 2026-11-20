@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Send, X } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { usePlant } from "@/industry/use-plant";
-import { ask, greeting, suggestions, type AgentAction, type CopilotAnswer } from "@/industry/copilot";
+import { ask, greeting, suggestions, type AgentAction, type CopilotAnswer, type CopilotCtx } from "@/industry/copilot";
+import { requestConfirmation, useInvalidateTickets, useMachines, useTickets } from "@/industry/use-machines";
 import { RichText } from "@/industry/ui";
 import { useAuth } from "@/context/auth-context";
 import { FaiscaMark } from "./faisca-mark";
@@ -25,8 +25,10 @@ interface Msg {
 
 export function CopilotPanel() {
   const { empresaId, info, fmt, lang, t } = usePlant();
-  const { token, usuario } = useAuth();
-  const qc = useQueryClient();
+  const { usuario } = useAuth();
+  const invalidate = useInvalidateTickets();
+  const machines = useMachines(info ? empresaId : null);
+  const tickets = useTickets(!!info);
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -34,6 +36,7 @@ export function CopilotPanel() {
   const scroller = useRef<HTMLDivElement>(null);
   const pending = useRef<string | null>(null);
   const firstName = usuario?.nome?.split(" ")[0];
+  const ctx = (): CopilotCtx => ({ empresaId: empresaId!, lang, fmt, machines, firstName, tickets });
 
   useEffect(() => {
     setMsgs([]);
@@ -52,7 +55,7 @@ export function CopilotPanel() {
   // Faísca speaks first when the panel opens on an empty conversation
   useEffect(() => {
     if (open && msgs.length === 0 && empresaId && info && !pending.current) {
-      const g = greeting(empresaId, lang, fmt, firstName);
+      const g = greeting(ctx());
       setMsgs([{ role: "assistant", text: g.text, actions: g.actions }]);
     }
   }, [open, msgs.length, empresaId, info, lang, fmt, firstName]);
@@ -81,7 +84,7 @@ export function CopilotPanel() {
     setInput("");
     setBusy(true);
     setMsgs((m) => [...m, { role: "user", text: q }, { role: "assistant", text: "" }]);
-    const [answer] = await Promise.all([ask(q, empresaId, lang, fmt), new Promise((r) => setTimeout(r, 550))]);
+    const [answer] = await Promise.all([ask(q, ctx()), new Promise((r) => setTimeout(r, 550))]);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!reduce) {
       const words = answer.text.split(/(\s+)/);
@@ -95,22 +98,13 @@ export function CopilotPanel() {
     setBusy(false);
   }
 
-  /** Opens a real ticket in the internal chat, assigned to the first active team member. */
+  /** Opens a real ticket in the internal chat asking the sector which machine it was. */
   async function runAction(msgIndex: number, action: AgentAction) {
     setMsgs((m) => m.map((x, i) => (i === msgIndex ? { ...x, done: true } : x)));
-    const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
     try {
-      const users = await fetch("/api/usuarios", { headers }).then((r) => (r.ok ? r.json() : []));
-      const owner = (users as { id: number; nome: string; perfil: string; status: string }[]).find(
-        (u) => u.perfil === "colaborador" && u.status === "ativo",
-      );
-      if (!owner) throw new Error(t("copilot.noOwner"));
-      const res = await fetch("/api/chat/chamados", { method: "POST", headers, body: JSON.stringify({ destinado_a: owner.id, titulo: action.title }) });
-      const ticket = await res.json();
-      if (!res.ok) throw new Error(ticket.error ?? res.statusText);
-      await fetch(`/api/chat/chamados/${ticket.id}/mensagens`, { method: "POST", headers, body: JSON.stringify({ conteudo: action.body }) });
-      qc.invalidateQueries({ queryKey: ["chamados"] });
-      setMsgs((m) => [...m, { role: "assistant", text: t("copilot.ticketDone", { name: owner.nome }), links: [{ label: t("copilot.openChat"), href: "/chat" }] }]);
+      const { owner } = await requestConfirmation(action);
+      invalidate();
+      setMsgs((m) => [...m, { role: "assistant", text: t("copilot.ticketDone", { name: owner }), links: [{ label: t("copilot.openChat"), href: "/chat" }] }]);
     } catch (e) {
       setMsgs((m) => [...m, { role: "assistant", text: t("copilot.ticketFail", { err: e instanceof Error ? e.message : String(e) }) }]);
     }

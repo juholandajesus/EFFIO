@@ -616,12 +616,15 @@ route("GET", "/chat/chamados", (ctx) => {
 route("POST", "/chat/chamados", (ctx) => {
   const u = requireAuth(ctx);
   const emp = requireEmpresa(u);
-  const { destinado_a, titulo, setor_id, alerta_id } = ctx.body ?? {};
+  const { destinado_a, titulo, setor_id, alerta_id, anomalia_id, suspeitos } = ctx.body ?? {};
   if (!destinado_a || !titulo) throw new HttpError(400, "destinado_a e titulo são obrigatórios.");
   const c = {
     id: nextId("chamados"), empresa_id: emp, aberto_por: u.sub, destinado_a: Number(destinado_a), titulo,
     status: "aberto", setor_id: setor_id ? Number(setor_id) : null, alerta_id: alerta_id ? Number(alerta_id) : null,
     created_at: now(), resolvido_em: null,
+    anomalia_id: anomalia_id ? String(anomalia_id) : null,
+    suspeitos: Array.isArray(suspeitos) ? suspeitos : null,
+    confirmado_maquina_id: null,
   };
   load().chamados.push(c);
   save();
@@ -663,9 +666,14 @@ route("POST", "/chat/chamados/:id/mensagens", (ctx) => {
     confirma_maquina_id: confirma_maquina_id ? Number(confirma_maquina_id) : null, created_at: now(),
   };
   d.mensagens.push(m);
+  const chamado = d.chamados.find((c) => c.id === id)!;
   if (m.confirma_maquina_id) {
     const maq = d.maquinas.find((x) => x.id === m.confirma_maquina_id && x.empresa_id === emp);
     if (maq) maq.confirmacoes_ia += 1;
+    chamado.confirmado_maquina_id = m.confirma_maquina_id;
+    if (chamado.status === "aberto") chamado.status = "em_andamento";
+  } else if (ctx.body?.nenhuma_suspeita) {
+    chamado.confirmado_maquina_id = 0;
   }
   save();
   return created(m);
