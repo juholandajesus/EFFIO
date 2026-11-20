@@ -163,6 +163,7 @@ export const pt: Dict = {
   "cine.h1b": "se explica.",
   "cine.sub": "A EFFIO lê a curva de consumo da sua fábrica, encontra onde o dinheiro vaza e aponta a máquina mais provável. O Faísca, nosso agente de IA, pede a confirmação da equipe e aprende com cada resposta.",
   "cine.howBtn": "Como funciona",
+  "cine.perYear": "{cost}/ano",
   "cine.live": "Agora na planta demo: {cost} por ano em desperdício encontrado.",
   "cine.rowFound": "O que o Faísca encontrou esta semana",
   "cine.suspect": "Provável: {machine} ({p}%)",

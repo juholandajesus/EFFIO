@@ -7,9 +7,9 @@ import { detectAnomalies, forecast, siteHourly, type Anomaly } from "@/industry/
 import { anomalyTitle } from "@/industry/copilot";
 import { estimatedShares, suspectsFor } from "@/industry/attribution";
 import { defaultRegister } from "@/industry/use-machines";
-import { EnergyCore } from "@/components/energy-core";
+import { StrikeCurve, type Hotspot } from "@/components/strike-curve";
+import { BrandLockup } from "@/components/brand-mark";
 import { CurveThumb, Row, Tile } from "@/components/cinema";
-import { FaiscaMark } from "@/components/faisca-mark";
 
 const DEMO_PLANT = 1;
 
@@ -22,6 +22,18 @@ export function eventWindow(empresaId: number, a: Anomaly) {
   const from = Math.max(0, Math.min(s, series.length - 1) - 30);
   const to = Math.min(series.length, Math.max(e, s + 1) + 30);
   return { values: series.slice(from, to).map((p) => p.kw), highlight: [s - from, e - from] as [number, number] };
+}
+
+/** The plant's last week, hour by hour, with each event's place in it. */
+function weekWindow(empresaId: number, anomalies: Anomaly[]) {
+  const series = siteHourly(empresaId, 7);
+  const t0 = new Date(series[0].ts).getTime();
+  const idx = (iso: string) => Math.round((new Date(iso).getTime() - t0) / 3600_000);
+  const events = anomalies
+    .map((a) => ({ a, start: idx(a.start), end: idx(a.end) }))
+    .filter((e) => e.end > 0 && e.start < series.length)
+    .map((e) => ({ ...e, start: Math.max(0, e.start), end: Math.min(series.length - 1, e.end) }));
+  return { values: series.map((p) => p.kw), events };
 }
 
 export default function Landing() {
@@ -46,10 +58,23 @@ export default function Landing() {
 
   const register = defaultRegister(DEMO_PLANT);
   const anomalies = detectAnomalies(DEMO_PLANT);
-  const yearly = anomalies.reduce((s, a) => s + a.annualizedCost, 0);
   const fc = forecast(DEMO_PLANT);
   const peakHour = new Date(fc.peak.ts).getHours();
   const heaviest = estimatedShares(DEMO_PLANT, register)[0];
+
+  // the last 7 days, hour by hour, and the costly events inside them
+  const week = weekWindow(DEMO_PLANT, anomalies);
+  const costly = week.events.filter((e) => e.a.annualizedCost > 0).sort((x, y) => y.a.annualizedCost - x.a.annualizedCost);
+  const hotspots: Hotspot[] = (narrow ? costly.slice(0, 1) : costly.slice(0, 2)).map(({ a, start, end }) => ({
+    start,
+    end,
+    onOpen: () => go("/login"),
+    label: (
+      <>
+        {anomalyTitle(a, lang)} <strong>{t("cine.perYear", { cost: fmt.money(a.annualizedCost) })}</strong>
+      </>
+    ),
+  }));
 
   const episodes = [
     { n: 1, title: t("cine.ep1"), body: t("cine.ep1b") },
@@ -63,9 +88,8 @@ export default function Landing() {
   return (
     <div className="cn min-h-screen">
       <header className={`cn-nav fixed inset-x-0 top-0 z-30 flex items-center justify-between px-[4%] py-4 transition-colors duration-300 ${scrolled ? "bg-[#090c10]/90 backdrop-blur" : ""}`}>
-        <Link href="/" className="flex items-center gap-2.5">
-          <FaiscaMark size={26} />
-          <span className="text-lg font-bold tracking-[0.3em]" style={{ fontStretch: "125%" }}>EFFIO</span>
+        <Link href="/" aria-label="EFFIO">
+          <BrandLockup />
         </Link>
         <nav className="hidden items-center gap-8 md:flex">
           <a href="#encontrou" className="text-[color:var(--cn-nevoa)] hover:text-white">{t("cine.navFound")}</a>
@@ -78,21 +102,19 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* hero: the core powers up behind the title */}
-      <section className="relative flex min-h-[100svh] items-end overflow-hidden pb-[5vh] md:items-center md:pb-0">
-        <EnergyCore focus={narrow ? [0.12, -0.66] : [0.5, 0.02]} scale={narrow ? 0.5 : 0.82} />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#090c10] to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-2/3 bg-gradient-to-r from-[#090c10]/85 to-transparent md:block" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[70%] bg-gradient-to-t from-[#090c10] via-[#090c10]/85 to-transparent md:hidden" />
-        <div className="relative z-10 max-w-3xl px-[4%]">
-          <h1 className="cn-hero-title cn-reveal">
+      {/* hero: a bolt strikes the plant's real curve and lights up where the money leaks */}
+      <section className="relative min-h-[100svh] overflow-hidden pb-[250px] md:pb-[330px]">
+        <StrikeCurve values={week.values} hotspots={hotspots} narrow={narrow} />
+        <div className="pointer-events-none absolute left-0 top-0 hidden h-[60%] w-1/2 bg-gradient-to-r from-[#090c10]/70 to-transparent md:block" />
+        <div className="relative z-10 max-w-3xl px-[4%] pt-[15vh] md:pt-[16vh]">
+          <h1 className="cn-hero-title cn-reveal cn-late">
             <span><span>{t("cine.h1a")}</span></span>
             <span><span><b>{t("cine.h1b")}</b></span></span>
           </h1>
-          <p className="cn-fade mt-7 max-w-[34em] text-lg leading-relaxed text-[color:var(--cn-nevoa)]" style={{ animationDelay: "0.9s" }}>
+          <p className="cn-fade mt-6 max-w-[34em] text-lg leading-relaxed text-[color:var(--cn-nevoa)]" style={{ animationDelay: "1.2s" }}>
             {t("cine.sub")}
           </p>
-          <div className="cn-fade mt-9 flex flex-wrap gap-3" style={{ animationDelay: "1.2s" }}>
+          <div className="cn-fade mt-8 flex flex-wrap gap-3" style={{ animationDelay: "1.5s" }}>
             <button className="cn-play" onClick={() => go("/login")} data-testid="landing-demo">
               <Play className="h-5 w-5 fill-current" /> {t("land.demo")}
             </button>
@@ -100,13 +122,10 @@ export default function Landing() {
               <Info className="h-5 w-5" /> {t("cine.howBtn")}
             </a>
           </div>
-          <p className="cn-fade mt-10 text-sm text-[color:var(--cn-nevoa)]" style={{ animationDelay: "2.2s" }}>
-            {t("cine.live", { cost: fmt.money(yearly) })}
-          </p>
         </div>
       </section>
 
-      <main className="relative z-10 mt-8 space-y-16 pb-24 md:-mt-10">
+      <main className="relative z-10 mt-6 space-y-16 pb-24">
         <div id="encontrou">
           <Row title={t("cine.rowFound")} testId="row-found">
             {anomalies.map((a) => {

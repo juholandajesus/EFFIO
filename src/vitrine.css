@@ -210,6 +210,36 @@
 @keyframes cn-rise { to { transform: none; } }
 @keyframes cn-fade { to { opacity: 1; } }
 
+/* the title waits for the strike, then rises in its light */
+.cn-late > span > span { animation-delay: 0.55s; }
+.cn-late > span:nth-child(2) > span { animation-delay: 0.68s; }
+
+/* waste windows on the hero curve */
+.cn-hot {
+  position: absolute; z-index: 5; display: flex; flex-direction: column; align-items: center;
+  transform: translate(-50%, calc(-100% - 6px)); opacity: 0;
+  animation: cn-hot-in 0.6s cubic-bezier(0.2, 0.7, 0.1, 1) forwards;
+  background: none; border: 0; padding: 0; color: inherit; cursor: pointer;
+}
+.cn-hot-card {
+  display: block; white-space: nowrap; font-size: 0.85rem; line-height: 1.2; text-align: left;
+  padding: 0.55rem 0.8rem; background: rgba(18, 23, 29, 0.86); border-left: 2px solid #f5a524;
+  backdrop-filter: blur(6px); transition: background 0.2s ease, transform 0.2s ease;
+}
+.cn-hot-card strong { color: #f5a524; font-weight: 700; margin-left: 0.3rem; }
+.cn-hot-line { display: block; width: 1px; height: 28px; background: linear-gradient(#f5a524, rgba(245, 165, 36, 0)); }
+.cn-hot:hover .cn-hot-card, .cn-hot:focus-visible .cn-hot-card { background: rgba(33, 40, 49, 0.95); transform: translateY(-2px); }
+.cn-hot:focus-visible { outline: none; }
+.cn-hot:focus-visible .cn-hot-card { box-shadow: 0 0 0 2px #f5a524; }
+@keyframes cn-hot-in { from { opacity: 0; transform: translate(-50%, calc(-100% + 6px)); } to { opacity: 1; transform: translate(-50%, calc(-100% - 6px)); } }
+@media (max-width: 767px) { .cn-hot-card { font-size: 0.78rem; white-space: normal; max-width: 220px; } }
+
+/* the brand mark: a light sweeps the metal, the spark crackles */
+.bm-live .bm-sheen { animation: bm-sheen 7s ease-in-out 1.2s infinite; }
+.bm-live .bm-rays, .bm-live .bm-glow { animation: bm-crackle 1.6s steps(1) infinite; transform-origin: 13.85px 33px; transform-box: view-box; }
+@keyframes bm-sheen { 0% { transform: skewX(-20deg) translateX(0); } 22%, 100% { transform: skewX(-20deg) translateX(60px); } }
+@keyframes bm-crackle { 0% { opacity: 1; transform: scale(1); } 18% { opacity: 0.55; transform: scale(0.85); } 31% { opacity: 1; transform: scale(1.08); } 63% { opacity: 0.8; transform: scale(0.95) rotate(8deg); } 79% { opacity: 1; transform: scale(1); } }
+
 /* Netflix-style buttons */
 .cn-play {
   display: inline-flex; align-items: center; gap: 0.6rem;
@@ -281,6 +311,8 @@
 @media (prefers-reduced-motion: reduce) {
   .cn-reveal > span > span, .cn-fade { animation: none; transform: none; opacity: 1; }
   .cn-tile, .cn-tile:hover { transition: none; transform: none; }
+  .cn-hot { animation: none; opacity: 1; transform: translate(-50%, calc(-100% - 6px)); }
+  .bm-live .bm-sheen, .bm-live .bm-rays, .bm-live .bm-glow { animation: none; }
 }
 
 /* app shell in cinema mode (Início): same components, night palette */

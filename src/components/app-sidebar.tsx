@@ -6,7 +6,7 @@ import {
   Radar, Home,
 } from "lucide-react";
 import { useT } from "@/i18n";
-import { FaiscaMark } from "./faisca-mark";
+import { BrandMark } from "./brand-mark";
 import type { Dict } from "@/i18n/en";
 
 import {
@@ -76,7 +76,7 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4 flex flex-row items-center gap-2.5">
-        <FaiscaMark size={30} />
+        <BrandMark size={32} animated />
         <div className="flex flex-col leading-none">
           <span className="font-bold text-lg tracking-[0.22em]" style={{ fontStretch: "125%" }}>EFFIO</span>
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("brand.tagline")}</span>

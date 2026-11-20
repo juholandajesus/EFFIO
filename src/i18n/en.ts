@@ -161,6 +161,7 @@ export const en = {
   "cine.h1b": "explains itself.",
   "cine.sub": "EFFIO reads your plant's consumption curve, finds where the money leaks and points to the most likely machine. Faísca, our AI agent, asks the team to confirm and learns from every answer.",
   "cine.howBtn": "How it works",
+  "cine.perYear": "{cost}/yr",
   "cine.live": "Right now at the demo plant: {cost} a year of waste found.",
   "cine.rowFound": "What Faísca found this week",
   "cine.suspect": "Likely: {machine} ({p}%)",

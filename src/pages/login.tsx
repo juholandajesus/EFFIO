@@ -12,8 +12,8 @@ import { useAuth } from "@/context/auth-context";
 import { LangToggle, useT } from "@/i18n";
 import { isDemoMode } from "@/lib/api-base";
 import { DEMO_EMAIL, DEMO_SENHA } from "@/mock/seed";
-import { FaiscaMark } from "@/components/faisca-mark";
-import { EnergyCore } from "@/components/energy-core";
+import { BoltLogo3D } from "@/components/bolt-logo-3d";
+import { BrandLockup } from "@/components/brand-mark";
 import { Play } from "lucide-react";
 import { usePlant } from "@/industry/use-plant";
 import { kpis } from "@/industry/engine";
@@ -66,12 +66,11 @@ export default function Login() {
 
   return (
     <div className="cn relative flex min-h-screen items-center justify-end overflow-hidden">
-      <EnergyCore focus={[-0.4, 0]} scale={0.95} className="hidden lg:block" />
+      <BoltLogo3D focus={[-0.42, 0.2]} scale={0.82} className="hidden lg:block" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-[#090c10]/90 via-[#090c10]/40 to-transparent" />
 
-      <Link href="/" className="cn-nav absolute left-[4%] top-5 z-10 flex items-center gap-2.5">
-        <FaiscaMark size={26} />
-        <span className="text-lg font-bold tracking-[0.3em]" style={{ fontStretch: "125%" }}>EFFIO</span>
+      <Link href="/" aria-label="EFFIO" className="absolute left-[4%] top-5 z-10">
+        <BrandLockup />
       </Link>
       <div className="absolute right-[4%] top-5 z-10"><LangToggle dark /></div>
 
