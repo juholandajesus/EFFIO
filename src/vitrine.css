@@ -1,0 +1,171 @@
+/*
+ * Vitrine: landing, login and the Faísca agent.
+ * Palette comes from the factory floor at night: blue-slate switchgear,
+ * sodium-lamp amber (brand) and the blue of an electric arc (Faísca).
+ */
+:root {
+  --vt-usina: #0f1b26;      /* base */
+  --vt-painel: #162635;     /* raised surfaces */
+  --vt-trilho: #22384b;     /* lines, graticule, borders */
+  --vt-sodio: #f5a524;      /* brand amber */
+  --vt-arco: #8fd8ff;       /* Faísca */
+  --vt-cal: #e8edf1;        /* text */
+  --vt-neblina: #8fa1b1;    /* secondary text */
+  --vt-font: "Archivo Variable", "Archivo", system-ui, sans-serif;
+}
+
+.vt {
+  background: var(--vt-usina);
+  color: var(--vt-cal);
+  font-family: var(--vt-font);
+  font-stretch: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+.vt a { color: inherit; }
+
+.vt :focus-visible {
+  outline: 2px solid var(--vt-arco);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* type scale (1.25) */
+.vt-display {
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: clamp(2.4rem, 5.2vw, 4.4rem);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+}
+.vt-h2 {
+  font-stretch: 118%;
+  font-weight: 750;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+.vt-lede {
+  font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+  line-height: 1.55;
+  color: var(--vt-neblina);
+  max-width: 34em;
+}
+.vt-small { font-size: 0.875rem; color: var(--vt-neblina); }
+.vt-num { font-variant-numeric: tabular-nums; }
+
+/* buttons: the primary action is the lit one */
+.vt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 3rem;
+  padding: 0 1.25rem;
+  border-radius: 999px;
+  font-weight: 650;
+  font-stretch: 108%;
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+.vt-btn-lit { background: var(--vt-sodio); color: #1d1300; }
+.vt-btn-lit:hover { box-shadow: 0 0 0 6px rgba(245, 165, 36, 0.18); }
+.vt-btn-ghost { color: var(--vt-cal); box-shadow: inset 0 0 0 1px var(--vt-trilho); }
+.vt-btn-ghost:hover { box-shadow: inset 0 0 0 1px var(--vt-neblina); }
+
+/* the instrument: an oscilloscope-like screen for the load curve */
+.vt-scope {
+  position: relative;
+  background:
+    linear-gradient(var(--vt-trilho) 1px, transparent 1px) 0 0 / 100% 25%,
+    linear-gradient(90deg, rgba(34, 56, 75, 0.55) 1px, transparent 1px) 0 0 / calc(100% / 14) 100%;
+  border-top: 1px solid var(--vt-trilho);
+  border-bottom: 1px solid var(--vt-trilho);
+}
+.vt-trace { filter: drop-shadow(0 0 6px rgba(245, 165, 36, 0.45)); }
+.vt-spark { filter: drop-shadow(0 0 8px var(--vt-arco)) drop-shadow(0 0 2px #fff); }
+
+.vt-callout {
+  position: absolute;
+  max-width: 17rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--vt-painel);
+  border-left: 2px solid var(--vt-arco);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+.vt-callout[data-on="true"] { opacity: 1; transform: none; }
+.vt-callout strong { color: var(--vt-sodio); font-weight: 700; }
+
+/* Faísca transcript on the landing */
+.vt-line { display: grid; grid-template-columns: 2.25rem 1fr; gap: 0.9rem; align-items: start; }
+.vt-q { color: var(--vt-neblina); font-style: italic; }
+
+/* Faísca panel (inside the app) */
+.vt-panel {
+  background: var(--vt-usina);
+  color: var(--vt-cal);
+  font-family: var(--vt-font);
+  border-left: 1px solid var(--vt-trilho);
+}
+.vt-panel .vt-msg-user {
+  margin-left: 2.5rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--vt-painel);
+  border-radius: 14px 14px 4px 14px;
+}
+.vt-panel .vt-msg-bot strong { color: var(--vt-sodio); font-weight: 700; }
+.vt-chip {
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  box-shadow: inset 0 0 0 1px var(--vt-trilho);
+  text-align: left;
+}
+.vt-chip:hover { box-shadow: inset 0 0 0 1px var(--vt-arco); }
+.vt-action {
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+  background: var(--vt-arco);
+  color: #06202e;
+}
+.vt-action[disabled] { opacity: 0.55; cursor: default; }
+.vt-input {
+  width: 100%;
+  background: var(--vt-painel);
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  color: var(--vt-cal);
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--vt-trilho);
+}
+.vt-input:focus { box-shadow: inset 0 0 0 1px var(--vt-arco); }
+.vt-input::placeholder { color: var(--vt-neblina); }
+
+.vt-fab {
+  font-family: var(--vt-font);
+  font-stretch: 110%;
+  background: var(--vt-usina);
+  color: var(--vt-cal);
+  box-shadow: 0 0 0 1px var(--vt-trilho), 0 10px 30px rgba(15, 27, 38, 0.35);
+}
+.vt-fab:hover { box-shadow: 0 0 0 1px var(--vt-arco), 0 10px 30px rgba(15, 27, 38, 0.35); }
+
+@keyframes vt-flicker {
+  0%, 100% { opacity: 1; }
+  45% { opacity: 0.75; }
+  50% { opacity: 1; }
+  52% { opacity: 0.6; }
+  55% { opacity: 1; }
+}
+.vt-flicker { animation: vt-flicker 3.2s infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vt-flicker { animation: none; }
+  .vt-callout { transition: none; }
+}

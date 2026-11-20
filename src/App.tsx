@@ -24,7 +24,6 @@ import Contrato from "@/pages/contrato";
 import Chat from "@/pages/chat";
 import Aprovacoes from "@/pages/aprovacoes";
 import { Layout } from "@/components/layout";
-import { DemoBanner } from "@/components/demo-banner";
 import { I18nProvider, LangKeyed } from "@/i18n";
 import Anomalies from "@/pages/anomalies";
 
@@ -103,7 +102,6 @@ function App() {
           </EmpresaProvider>
         </AuthProvider>
         <Toaster />
-        <DemoBanner />
       </TooltipProvider>
       </I18nProvider>
     </QueryClientProvider>

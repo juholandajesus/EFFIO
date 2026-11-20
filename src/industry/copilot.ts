@@ -15,9 +15,21 @@ import {
 import { getPlant } from "./engine";
 import type { Fmt } from "./use-plant";
 
+export type Intent = "explain" | "why" | "waste" | "forecast" | "idle" | "greeting" | "unknown";
+
+/** Something Faísca can do on its own, not just say. */
+export interface AgentAction {
+  kind: "ticket";
+  label: string;
+  title: string; // ticket title
+  body: string; // first message of the ticket
+}
+
 export interface CopilotAnswer {
   text: string; // light markdown: **bold**, "- " bullets, blank line = paragraph
   links?: { label: string; href: string }[];
+  actions?: AgentAction[];
+  intent?: Intent;
   source: "local" | "remote";
 }
 
@@ -87,6 +99,83 @@ export function anomalyHint(a: Anomaly, lang: Lang, lineKind: "production" | "ut
   }
 }
 
+// ───────────────────────── Faísca's voice ─────────────────────────
+// Sharp and direct: one short line of attitude, then the numbers. No fluff.
+
+const OPENERS: Record<Intent, { en: string[]; pt: string[] }> = {
+  why: {
+    pt: ["Fui atrás do culpado.", "Conta subindo sem motivo comigo não passa."],
+    en: ["I went after the culprit.", "A bill going up for no reason doesn't get past me."],
+  },
+  waste: {
+    pt: ["Achei dinheiro escapando. Anota aí.", "Desperdício é meu assunto preferido."],
+    en: ["Found money leaking. Write this down.", "Waste is my favourite subject."],
+  },
+  forecast: {
+    pt: ["Olhei a agenda do ERP e fiz as contas.", "Futuro eu não adivinho, eu calculo."],
+    en: ["I checked the ERP schedule and ran the numbers.", "I don't guess the future, I calculate it."],
+  },
+  idle: {
+    pt: ["Máquina parada também come energia. Olha quanto:"],
+    en: ["Idle machines still eat power. Here's how much:"],
+  },
+  explain: {
+    pt: ["Esse eu resolveria hoje.", "Vamos direto ao ponto."],
+    en: ["I'd fix this one today.", "Straight to the point."],
+  },
+  greeting: {
+    pt: ["Fala! Sou o Faísca. Leio seus medidores e o ERP e aponto onde a conta está vazando."],
+    en: ["Hey, I'm Faísca. I read your meters and your ERP and point out where the bill is leaking."],
+  },
+  unknown: {
+    pt: ["Essa foge do meu painel. Eu entendo de consumo, desperdício, pico de demanda e máquina parada. Enquanto isso, o resumo:"],
+    en: ["That's outside my panel. I'm good with consumption, waste, peak demand and idle machines. Meanwhile, here's the summary:"],
+  },
+};
+
+function pick<T>(xs: T[], seed: string) {
+  let h = 0;
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return xs[h % xs.length];
+}
+
+function voice(a: CopilotAnswer, question: string, lang: Lang): CopilotAnswer {
+  if (!a.intent) return a;
+  const opener = pick(OPENERS[a.intent][lang], question);
+  const nudge = a.actions?.length ? (lang === "pt" ? "Quer que eu abra o chamado?" : "Want me to open the ticket?") : "";
+  return { ...a, text: [opener, a.text, nudge].filter(Boolean).join("\n") };
+}
+
+function ticketFor(a: Anomaly, empresaId: number, lang: Lang, fmt: Fmt): AgentAction {
+  const plant = getPlant(empresaId)!.plant;
+  const line = plant.lines.find((l) => l.id === a.lineId)!;
+  const prod = a.sku ? productStats(empresaId, 30).find((p) => p.sku === a.sku) : undefined;
+  const title = anomalyTitle(a, lang, line.name[lang], prod?.name[lang]);
+  const cost = a.annualizedCost > 0 ? fmt.money(a.annualizedCost) : null;
+  const body =
+    lang === "pt"
+      ? `[Faísca] ${anomalyHint(a, lang, line.kind)} Detectado em ${fmt.dateTime(a.start)}.${cost ? ` Impacto estimado: ${cost} por ano.` : ""} Me avisa quando resolver que eu confirmo nas próximas leituras.`
+      : `[Faísca] ${anomalyHint(a, lang, line.kind)} Detected on ${fmt.dateTime(a.start)}.${cost ? ` Estimated impact: ${cost} per year.` : ""} Let me know when it's fixed and I'll confirm it in the next readings.`;
+  return { kind: "ticket", label: lang === "pt" ? "Abrir chamado" : "Open ticket", title, body };
+}
+
+/** Faísca speaks first: the most expensive open problem, with an action ready. */
+export function greeting(empresaId: number, lang: Lang, fmt: Fmt, firstName?: string): CopilotAnswer {
+  const top = detectAnomalies(empresaId).find((a) => a.annualizedCost > 0);
+  const hi = lang === "pt" ? `Fala${firstName ? `, ${firstName}` : ""}.` : `Hey${firstName ? ` ${firstName}` : ""}.`;
+  if (!top) {
+    return { text: lang === "pt" ? `${hi} Tudo limpo por aqui. Pode perguntar.` : `${hi} All clean here. Ask away.`, intent: "greeting", source: "local" };
+  }
+  const line = getPlant(empresaId)!.plant.lines.find((l) => l.id === top.lineId)!;
+  const prod = top.sku ? productStats(empresaId, 30).find((p) => p.sku === top.sku) : undefined;
+  const title = anomalyTitle(top, lang, line.name[lang], prod?.name[lang]);
+  const text =
+    lang === "pt"
+      ? `${hi} Antes de você perguntar: **${title}**, desde ${fmt.date(top.start)}, e isso custa **${fmt.money(top.annualizedCost)} por ano** se ninguém mexer.\nQuer que eu abra o chamado?`
+      : `${hi} Before you ask: **${title}**, since ${fmt.date(top.start)}, and that's **${fmt.money(top.annualizedCost)} a year** if nobody touches it.\nWant me to open the ticket?`;
+  return { text, intent: "greeting", actions: [ticketFor(top, empresaId, lang, fmt)], source: "local" };
+}
+
 function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt): CopilotAnswer {
   const q = norm(question);
   const pt = lang === "pt";
@@ -142,7 +231,7 @@ function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt):
         pt ? "Próximos passos sugeridos:" : "Suggested next steps:",
         ...actions[a.kind][lang].map((s) => `- ${s}`),
       ];
-      return { text: parts.join("\n"), links: [{ label: pt ? "Abrir chamado no chat interno" : "Open a ticket in internal chat", href: "/chat" }], source: "local" };
+      return { text: parts.join("\n"), intent: "explain", actions: [ticketFor(a, empresaId, lang, fmt)], source: "local" };
     }
   }
 
@@ -184,7 +273,7 @@ function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt):
     } else if (change > 0 && outChange > 0) {
       parts.push(pt ? "O aumento acompanha a produção: não há sinal de desperdício." : "The increase follows production; no sign of waste.");
     }
-    return { text: parts.join("\n"), links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
+    return { text: parts.join("\n"), intent: "why", actions: anomalies[0] ? [ticketFor(anomalies[0], empresaId, lang, fmt)] : undefined, links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
   }
 
   // ── waste / savings
@@ -203,7 +292,7 @@ function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt):
         ? `Além disso, ${fmt.num(k.idlePct, 1)}% da energia do mês foi consumida com as linhas paradas (${fmt.energy(k.idleKwh)}).`
         : `On top of that, ${fmt.num(k.idlePct, 1)}% of this month's energy was used while lines were idle (${fmt.energy(k.idleKwh)}).`,
     );
-    return { text: parts.join("\n"), links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
+    return { text: parts.join("\n"), intent: "waste", actions: list[0] ? [ticketFor(list[0], empresaId, lang, fmt)] : undefined, links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
   }
 
   // ── forecast / peak
@@ -224,7 +313,7 @@ function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt):
         ? "Há folga em relação à demanda contratada."
         : "There is headroom against the contracted demand.",
     ];
-    return { text: parts.join("\n"), links: [{ label: pt ? "Ver previsão" : "Open forecast", href: "/anomalies#forecast" }], source: "local" };
+    return { text: parts.join("\n"), intent: "forecast", links: [{ label: pt ? "Ver previsão" : "Open forecast", href: "/anomalies#forecast" }], source: "local" };
   }
 
   // ── idle
@@ -232,7 +321,7 @@ function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt):
     const lines = lineStats(empresaId, 30).sort((a, b) => b.idleKwh - a.idleKwh);
     const parts = [pt ? "Energia consumida fora de produção (30 dias):" : "Energy used outside production (30 days):"];
     for (const l of lines.slice(0, 4)) parts.push(`- **${L(l.name)}**: ${fmt.energy(l.idleKwh)} (${fmt.num(l.idlePct, 1)}%)`);
-    return { text: parts.join("\n"), links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
+    return { text: parts.join("\n"), intent: "idle", links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
   }
 
   // ── summary (default for greetings / "how are we doing")
@@ -245,7 +334,8 @@ function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt):
   ];
   if (top) parts.push(pt ? `Prioridade nº 1: ${anomalyTitle(top, lang, L(lineName(empresaId, top.lineId)), prodName(top.sku))}.` : `Priority #1: ${anomalyTitle(top, lang, L(lineName(empresaId, top.lineId)), prodName(top.sku))}.`);
   parts.push(pt ? "Você pode me perguntar sobre variação de consumo, desperdício, previsão de pico ou consumo com as linhas paradas." : "Ask me about consumption changes, waste, peak forecast or energy used while lines are idle.");
-  return { text: parts.join("\n"), source: "local" };
+  const greeting = has(q, ["oi", "ola", "hello", "hi ", "hey", "fala", "bom dia", "boa tarde", "boa noite", "good morning", "resumo", "summary", "como estamos", "how are we"]) || q.length < 4;
+  return { text: parts.join("\n"), intent: greeting ? "greeting" : "unknown", actions: top ? [ticketFor(top, empresaId, lang, fmt)] : undefined, source: "local" };
 }
 
 /** Compact context sent to an external model, so it reasons over the same numbers. */
@@ -269,7 +359,13 @@ export async function ask(question: string, empresaId: number, lang: Lang, fmt: 
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, lang, context: copilotContext(empresaId) }),
+        body: JSON.stringify({
+          question,
+          lang,
+          persona:
+            "You are Faísca, EFFIO's energy agent for industrial plants. Sharp and direct: one short line of attitude, then the numbers. Never invent figures: use only the context. Point to the most expensive problem and offer to open a ticket.",
+          context: copilotContext(empresaId),
+        }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -279,5 +375,5 @@ export async function ask(question: string, empresaId: number, lang: Lang, fmt: 
       /* fall back to the local engine */
     }
   }
-  return localAnswer(question, empresaId, lang, fmt);
+  return voice(localAnswer(question, empresaId, lang, fmt), question, lang);
 }

@@ -3,6 +3,7 @@ import { AppSidebar } from "./app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { EmpresaSelector } from "./empresa-selector";
 import { CopilotPanel } from "./copilot-panel";
+import { DemoBanner } from "./demo-banner";
 import { LangToggle } from "@/i18n";
 
 interface LayoutProps {
@@ -27,6 +28,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
         </main>
         <CopilotPanel />
+        <DemoBanner />
       </div>
     </SidebarProvider>
   );

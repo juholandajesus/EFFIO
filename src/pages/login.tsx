@@ -3,18 +3,20 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { LangToggle, useT } from "@/i18n";
 import { isDemoMode } from "@/lib/api-base";
 import { DEMO_EMAIL, DEMO_SENHA } from "@/mock/seed";
+import { FaiscaMark } from "@/components/faisca-mark";
+import { LoadTrace } from "@/components/load-trace";
+import { usePlant } from "@/industry/use-plant";
+import { kpis } from "@/industry/engine";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid e-mail / E-mail inválido" }),
@@ -27,6 +29,8 @@ export default function Login() {
   const { login } = useAuth();
   const { toast } = useToast();
   const { t } = useT();
+  const { fmt } = usePlant(1);
+  const savings = kpis(1).savingsAnnual;
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -61,54 +65,72 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative">
-      <div className="absolute right-4 top-4"><LangToggle /></div>
-      <Link href="/" className="flex items-center gap-2 text-primary mb-8 hover:opacity-80 transition-opacity">
-        <Zap className="h-10 w-10 fill-current" />
-        <span className="font-bold text-3xl text-foreground tracking-tight">EFFIO</span>
-      </Link>
+    <div className="grid min-h-screen lg:grid-cols-[1.15fr_1fr]" style={{ fontFamily: "var(--vt-font)" }}>
+      <aside className="vt relative hidden flex-col justify-between overflow-hidden lg:flex">
+        <Link href="/" className="flex items-center gap-2.5 px-10 pt-8">
+          <FaiscaMark size={30} />
+          <span className="text-xl font-extrabold" style={{ fontStretch: "125%" }}>EFFIO</span>
+        </Link>
+        <div className="px-10">
+          <p className="vt-h2 max-w-[16ch]">{t("login.faisca", { cost: fmt.money(savings) })}</p>
+          <p className="vt-small mt-3">{t("login.faiscaSign")}</p>
+        </div>
+        <LoadTrace empresaId={1} compact callouts={() => null} />
+      </aside>
 
-      <Card className="w-full max-w-md shadow-lg border-primary/20">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">{t("login.title")}</CardTitle>
-          <CardDescription>{t("login.subtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <main className="relative flex flex-col items-center justify-center bg-background p-6">
+        <div className="absolute right-5 top-5"><LangToggle /></div>
+        <Link href="/" className="mb-10 flex items-center gap-2.5 lg:hidden">
+          <FaiscaMark size={30} />
+          <span className="text-xl font-extrabold" style={{ fontStretch: "125%" }}>EFFIO</span>
+        </Link>
+        <div className="w-full max-w-sm">
+          <h1 className="text-3xl font-extrabold" style={{ fontStretch: "118%" }}>{t("login.title")}</h1>
+          <p className="mt-1.5 text-muted-foreground">{t("login.subtitle")}</p>
+
+          {isDemoMode && (
+            <button
+              type="button"
+              disabled={isLoading}
+              data-testid="demo-br"
+              onClick={() => onSubmit({ email: DEMO_EMAIL, senha: DEMO_SENHA })}
+              className="vt mt-8 flex w-full items-center gap-3 rounded-2xl p-4 text-left transition-shadow hover:shadow-[0_0_0_2px_var(--vt-arco)] disabled:opacity-60"
+            >
+              <FaiscaMark size={34} flicker />
+              <span>
+                <span className="block font-bold" style={{ fontStretch: "110%" }}>{t("login.demoBr")}</span>
+                <span className="vt-small block">{t("login.demoHint")}</span>
+              </span>
+            </button>
+          )}
+
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-4">
               <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t("login.email")}</FormLabel>
-                  <FormControl><Input placeholder="manager@company.com" {...field} /></FormControl>
+                  <FormControl><Input className="h-11" placeholder={t("login.emailPh")} autoComplete="email" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="senha" render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t("login.password")}</FormLabel>
-                  <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                  <FormControl><Input className="h-11" type="password" autoComplete="current-password" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-              <Button type="submit" className="w-full h-11 text-base mt-6" disabled={isLoading}>
+              <Button type="submit" className="mt-2 h-11 w-full rounded-full text-base font-semibold" disabled={isLoading}>
                 {isLoading ? t("login.loading") : t("login.submit")}
               </Button>
             </form>
           </Form>
-          {isDemoMode && (
-            <div className="mt-6 space-y-2 border-t pt-4">
-              <div className="text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("login.quickDemo")}</div>
-              <Button variant="outline" type="button" className="w-full" disabled={isLoading} data-testid="demo-br" onClick={() => onSubmit({ email: DEMO_EMAIL, senha: DEMO_SENHA })}>
-                {t("login.demoBr")}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-center border-t p-4 text-sm text-muted-foreground">
-          {t("login.noAccount")}{" "}
-          <Link href="/cadastro" className="text-primary font-medium hover:underline ml-1">{t("login.signup")}</Link>
-        </CardFooter>
-      </Card>
+          <p className="mt-8 text-sm text-muted-foreground">
+            {t("login.noAccount")}{" "}
+            <Link href="/cadastro" className="font-semibold text-foreground underline underline-offset-4">{t("login.signup")}</Link>
+          </p>
+        </div>
+      </main>
     </div>
   );
 }

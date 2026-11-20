@@ -698,3 +698,17 @@ export function kpis(empresaId: number, days = 30) {
     idlePct: round((lines.reduce((a, l) => a + l.idleKwh, 0) / (kwh || 1)) * 100, 1),
   };
 }
+
+/** Whole-site load (kW) for each hour of the last `days` days, oldest first. */
+export function siteHourly(empresaId: number, days = 14) {
+  const s = sim(empresaId)!;
+  const out: { ts: string; kw: number }[] = [];
+  for (let i = DAYS - days; i < DAYS; i++) {
+    for (let h = 0; h < 24; h++) {
+      const d = dayDate(i);
+      d.setHours(h);
+      out.push({ ts: d.toISOString(), kw: s.plant.lines.reduce((a, l) => a + s.load[l.id][i * 24 + h], 0) });
+    }
+  }
+  return out;
+}

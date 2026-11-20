@@ -5,10 +5,11 @@ import { getPlant } from "./engine";
 import type { L } from "./plants";
 
 /** Active plant + formatters in the company's currency and the user's language. */
-export function usePlant() {
+export function usePlant(forceEmpresaId?: number) {
   const { empresaAtiva } = useEmpresa();
   const { lang, locale, t } = useT();
-  const info = getPlant(empresaAtiva?.id);
+  const id = forceEmpresaId ?? empresaAtiva?.id ?? null;
+  const info = getPlant(id);
 
   const fmt = useMemo(() => {
     const currency = info?.region.currency ?? "USD";
@@ -32,7 +33,7 @@ export function usePlant() {
     return { money, num, energy, co2, pct, date, dateTime, l, currency };
   }, [info?.region.currency, locale, lang]);
 
-  return { empresaId: empresaAtiva?.id ?? null, empresa: empresaAtiva, info, fmt, lang, t };
+  return { empresaId: id, empresa: empresaAtiva, info, fmt, lang, t };
 }
 
 export type Fmt = ReturnType<typeof usePlant>["fmt"];
