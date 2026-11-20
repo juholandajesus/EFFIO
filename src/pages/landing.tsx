@@ -1,143 +1,227 @@
-import { Link } from "wouter";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { Play, Info } from "lucide-react";
 import { LangToggle, useT } from "@/i18n";
 import { usePlant } from "@/industry/use-plant";
-import { dailySeries, detectAnomalies, forecast, type Anomaly } from "@/industry/engine";
-import { LoadTrace } from "@/components/load-trace";
-import { FaiscaMark } from "@/components/faisca-mark";
-import { RichText } from "@/industry/ui";
-import { suspectsFor } from "@/industry/attribution";
+import { detectAnomalies, forecast, siteHourly, type Anomaly } from "@/industry/engine";
+import { anomalyTitle } from "@/industry/copilot";
+import { estimatedShares, suspectsFor } from "@/industry/attribution";
 import { defaultRegister } from "@/industry/use-machines";
+import { EnergyCore } from "@/components/energy-core";
+import { CurveThumb, Row, Tile } from "@/components/cinema";
+import { FaiscaMark } from "@/components/faisca-mark";
 
 const DEMO_PLANT = 1;
 
+/** The curve around an event, plus where the event sits in it. */
+export function eventWindow(empresaId: number, a: Anomaly) {
+  const series = siteHourly(empresaId, 10);
+  const t0 = new Date(series[0].ts).getTime();
+  const s = Math.round((new Date(a.start).getTime() - t0) / 3600_000);
+  const e = Math.round((new Date(a.end).getTime() - t0) / 3600_000);
+  const from = Math.max(0, Math.min(s, series.length - 1) - 30);
+  const to = Math.min(series.length, Math.max(e, s + 1) + 30);
+  return { values: series.slice(from, to).map((p) => p.kw), highlight: [s - from, e - from] as [number, number] };
+}
+
 export default function Landing() {
-  const { t } = useT();
-  const { fmt, lang } = usePlant(DEMO_PLANT);
+  const { t, lang } = useT();
+  const { fmt } = usePlant(DEMO_PLANT);
+  const [, go] = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+  const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
 
-  const anomalies = detectAnomalies(DEMO_PLANT);
-  const find = (k: Anomaly["kind"]) => anomalies.find((a) => a.kind === k);
-  const leak = find("baseload");
-  const idle = find("off_hours");
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const register = defaultRegister(DEMO_PLANT);
-  const top = (a?: Anomaly) => (a ? suspectsFor(a, register, 1).suspects[0] : undefined);
-  const leakSuspect = top(leak);
-  const idleSuspect = top(idle);
-  const pctOf = (p?: number) => `${Math.round((p ?? 0) * 100)}%`;
-  const peak = find("demand_peak");
+  const anomalies = detectAnomalies(DEMO_PLANT);
+  const yearly = anomalies.reduce((s, a) => s + a.annualizedCost, 0);
   const fc = forecast(DEMO_PLANT);
-  const days = dailySeries(DEMO_PLANT, 14);
-  const out = (xs: typeof days) => xs.reduce((a, p) => a + p.output, 0);
-  const outPct = ((out(days.slice(7)) - out(days.slice(0, 7))) / out(days.slice(0, 7))) * 100;
+  const peakHour = new Date(fc.peak.ts).getHours();
+  const heaviest = estimatedShares(DEMO_PLANT, register)[0];
 
-  const callout = (a: Anomaly) => {
-    if (a.kind === "baseload") return <RichText text={t("land.coLeak", { cost: fmt.money(a.annualizedCost), machine: leakSuspect?.machine.nome ?? "", p: pctOf(leakSuspect?.probability) })} />;
-    if (a.kind === "off_hours") return <RichText text={t("land.coIdle", { cost: fmt.money(a.annualizedCost), machine: idleSuspect?.machine.nome ?? "", p: pctOf(idleSuspect?.probability) })} />;
-    if (a.kind === "demand_peak") return <RichText text={t("land.coPeak", { pct: fmt.num(a.peakPct ?? 0, 0) })} />;
-    return null;
-  };
-
-  const peakWhen = peak ? new Date(peak.start) : null;
-  const locale = lang === "pt" ? "pt-BR" : "en-US";
-  const transcript = [
-    {
-      q: t("land.q1"),
-      a: t("land.a1", {
-        out: fmt.pct(outPct, 1),
-        cost: fmt.money((leak?.annualizedCost ?? 0) + (idle?.annualizedCost ?? 0)),
-        m1: idleSuspect?.machine.nome ?? "",
-        p1: pctOf(idleSuspect?.probability),
-        m2: leakSuspect?.machine.nome ?? "",
-        p2: pctOf(leakSuspect?.probability),
-      }),
-    },
-    {
-      q: t("land.q2"),
-      a: t("land.a2", {
-        when: peakWhen ? peakWhen.toLocaleDateString(locale, { weekday: "long" }) : "",
-        hour: peakWhen ? peakWhen.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }) : "",
-        pct: fmt.num(peak?.peakPct ?? 0, 0),
-        fc: fmt.num(fc.peakPct, 0),
-      }),
-    },
-    { q: t("land.q3"), a: t("land.a3", { machine: idleSuspect?.machine.nome ?? "", cost: fmt.money(idle?.annualizedCost ?? 0) }) },
+  const episodes = [
+    { n: 1, title: t("cine.ep1"), body: t("cine.ep1b") },
+    { n: 2, title: t("cine.ep2"), body: t("cine.ep2b") },
+    { n: 3, title: t("cine.ep3"), body: t("cine.ep3b") },
   ];
 
-  const box = [
-    [t("land.b1"), t("land.b1d")],
-    [t("land.b2"), t("land.b2d")],
-    [t("land.b3"), t("land.b3d")],
-    [t("land.b4"), t("land.b4d")],
-  ];
+  // a 24h battery plan from the forecast: charge at night, discharge around the forecast peak
+  const plan = Array.from({ length: 24 }, (_, h) => (h < 6 ? "charge" : h >= peakHour - 1 && h <= peakHour + 2 ? "discharge" : "hold"));
 
   return (
-    <div className="vt min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-2.5 no-underline">
-          <FaiscaMark size={30} />
-          <span className="text-xl font-extrabold" style={{ fontStretch: "125%" }}>EFFIO</span>
+    <div className="cn min-h-screen">
+      <header className={`cn-nav fixed inset-x-0 top-0 z-30 flex items-center justify-between px-[4%] py-4 transition-colors duration-300 ${scrolled ? "bg-[#090c10]/90 backdrop-blur" : ""}`}>
+        <Link href="/" className="flex items-center gap-2.5">
+          <FaiscaMark size={26} />
+          <span className="text-lg font-bold tracking-[0.3em]" style={{ fontStretch: "125%" }}>EFFIO</span>
         </Link>
-        <nav className="flex items-center gap-3">
-          <LangToggle />
-          <Link href="/login" className="vt-btn vt-btn-ghost h-10 text-sm">{t("land.login")}</Link>
+        <nav className="hidden items-center gap-8 md:flex">
+          <a href="#encontrou" className="text-[color:var(--cn-nevoa)] hover:text-white">{t("cine.navFound")}</a>
+          <a href="#como" className="text-[color:var(--cn-nevoa)] hover:text-white">{t("cine.navHow")}</a>
+          <a href="#bess" className="text-[color:var(--cn-nevoa)] hover:text-white">BESS</a>
         </nav>
+        <div className="flex items-center gap-3">
+          <LangToggle dark />
+          <Link href="/login" className="rounded px-3 py-1.5 hover:bg-white/10">{t("land.login")}</Link>
+        </div>
       </header>
 
-      <main>
-        <section className="mx-auto max-w-6xl px-6 pb-10 pt-10 md:pt-14">
-          <h1 className="vt-display max-w-[19ch]">{t("land.h1")}</h1>
-          <p className="vt-lede mt-5">{t("land.sub")}</p>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/login" className="vt-btn vt-btn-lit" data-testid="landing-demo">{t("land.demo")}</Link>
-            <Link href="/cadastro" className="vt-btn vt-btn-ghost">{t("land.signup")}</Link>
+      {/* hero: the core powers up behind the title */}
+      <section className="relative flex min-h-[100svh] items-end overflow-hidden pb-[5vh] md:items-center md:pb-0">
+        <EnergyCore focus={narrow ? [0.12, -0.66] : [0.5, 0.02]} scale={narrow ? 0.5 : 0.82} />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#090c10] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-2/3 bg-gradient-to-r from-[#090c10]/85 to-transparent md:block" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[70%] bg-gradient-to-t from-[#090c10] via-[#090c10]/85 to-transparent md:hidden" />
+        <div className="relative z-10 max-w-3xl px-[4%]">
+          <h1 className="cn-hero-title cn-reveal">
+            <span><span>{t("cine.h1a")}</span></span>
+            <span><span><b>{t("cine.h1b")}</b></span></span>
+          </h1>
+          <p className="cn-fade mt-7 max-w-[34em] text-lg leading-relaxed text-[color:var(--cn-nevoa)]" style={{ animationDelay: "0.9s" }}>
+            {t("cine.sub")}
+          </p>
+          <div className="cn-fade mt-9 flex flex-wrap gap-3" style={{ animationDelay: "1.2s" }}>
+            <button className="cn-play" onClick={() => go("/login")} data-testid="landing-demo">
+              <Play className="h-5 w-5 fill-current" /> {t("land.demo")}
+            </button>
+            <a className="cn-more" href="#como">
+              <Info className="h-5 w-5" /> {t("cine.howBtn")}
+            </a>
           </div>
-        </section>
+          <p className="cn-fade mt-10 text-sm text-[color:var(--cn-nevoa)]" style={{ animationDelay: "2.2s" }}>
+            {t("cine.live", { cost: fmt.money(yearly) })}
+          </p>
+        </div>
+      </section>
 
-        <section aria-label={t("land.caption")}>
-          <LoadTrace empresaId={DEMO_PLANT} callouts={callout} />
-          <p className="vt-small mx-auto max-w-6xl px-6 pt-3">{t("land.caption")}</p>
-        </section>
-
-        <section className="mx-auto grid max-w-6xl gap-10 px-6 py-24 md:grid-cols-[1fr_1.4fr]">
-          <div>
-            <h2 className="vt-h2 max-w-[14ch]">{t("land.askTitle")}</h2>
-            <p className="vt-lede mt-4">{t("land.askSub")}</p>
-          </div>
-          <div className="space-y-9">
-            {transcript.map((x) => (
-              <div key={x.q} className="space-y-3">
-                <p className="vt-q pl-[3.15rem]">“{x.q}”</p>
-                <div className="vt-line">
-                  <FaiscaMark size={32} />
-                  <div className="text-[1.05rem] leading-relaxed [&_strong]:text-[color:var(--vt-sodio)]">
-                    <RichText text={x.a} />
+      <main className="relative z-10 mt-8 space-y-16 pb-24 md:-mt-10">
+        <div id="encontrou">
+          <Row title={t("cine.rowFound")} testId="row-found">
+            {anomalies.map((a) => {
+              const w = eventWindow(DEMO_PLANT, a);
+              const top = suspectsFor(a, register, 1).suspects[0];
+              return (
+                <Tile
+                  key={a.id}
+                  label={anomalyTitle(a, lang)}
+                  onOpen={() => go("/login")}
+                  face={
+                    <>
+                      <CurveThumb values={w.values} highlight={w.highlight} />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-3 pt-10">
+                        <div className="text-sm font-semibold leading-tight">{anomalyTitle(a, lang)}</div>
+                      </div>
+                    </>
+                  }
+                  details={
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-[color:var(--cn-sodio)]">
+                          {a.annualizedCost > 0 ? `${fmt.money(a.annualizedCost)}/${t("common.yearShort")}` : `${a.peakPct}%`}
+                        </span>
+                        <span className="cn-badge border border-white/30">{t(`anom.kind.${a.kind}` as "anom.kind.baseload")}</span>
+                      </div>
+                      {top && <div className="mt-1 text-[color:var(--cn-nevoa)]">{t("cine.suspect", { machine: top.machine.nome, p: Math.round(top.probability * 100) })}</div>}
+                    </>
+                  }
+                />
+              );
+            })}
+            <Tile
+              label={t("cine.tileForecast")}
+              onOpen={() => go("/login")}
+              face={
+                <>
+                  <CurveThumb values={fc.points.map((p) => p.kw)} tone="arc" />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-3 pt-10">
+                    <div className="text-sm font-semibold leading-tight">{t("cine.tileForecast")}</div>
                   </div>
+                </>
+              }
+              details={<div className="text-[color:var(--cn-nevoa)]">{t("cine.tileForecastD", { kw: fmt.num(fc.peak.kw), pct: fmt.num(fc.peakPct, 0) })}</div>}
+            />
+            {heaviest && (
+              <Tile
+                label={heaviest.machine.nome}
+                onOpen={() => go("/login")}
+                face={
+                  <div className="absolute inset-0 flex flex-col justify-between bg-[color:var(--cn-painel)] p-4">
+                    <span className="text-5xl font-light tabular-nums" style={{ fontStretch: "122%" }}>{Math.round(heaviest.share * 100)}%</span>
+                    <span className="text-sm font-semibold leading-tight">{t("cine.tileHeavy", { machine: heaviest.machine.nome })}</span>
+                  </div>
+                }
+                details={<div className="text-[color:var(--cn-nevoa)]">{t("cine.tileHeavyD", { cost: fmt.money(heaviest.cost) })}</div>}
+              />
+            )}
+          </Row>
+        </div>
+
+        <section id="como" className="px-[4%]">
+          <h2 className="cn-h2 pb-6">{t("cine.rowHow")}</h2>
+          <div className="grid gap-6 md:grid-cols-3">
+            {episodes.map((ep) => (
+              <div key={ep.n} className="flex items-end gap-2">
+                <span className="cn-rank select-none" aria-hidden="true">{ep.n}</span>
+                <div className="min-w-0 flex-1 pb-2 pl-2">
+                  <div className="text-lg font-semibold" style={{ fontStretch: "112%" }}>{ep.title}</div>
+                  <p className="mt-1 text-sm leading-relaxed text-[color:var(--cn-nevoa)]">{ep.body}</p>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-6 pb-24">
-          <h2 className="vt-h2">{t("land.boxTitle")}</h2>
-          <dl className="mt-8 grid gap-x-12 gap-y-8 md:grid-cols-2">
-            {box.map(([term, desc]) => (
-              <div key={term} className="pt-4" style={{ borderTop: "1px solid var(--vt-trilho)" }}>
-                <dt className="text-lg font-bold" style={{ fontStretch: "112%" }}>{term}</dt>
-                <dd className="mt-1.5 leading-relaxed" style={{ color: "var(--vt-neblina)" }}>{desc}</dd>
-              </div>
-            ))}
-          </dl>
+        <section id="bess" className="mx-[4%] grid items-center gap-10 rounded-xl bg-[color:var(--cn-painel)] p-8 md:grid-cols-[1fr_1.2fr] md:p-12">
+          <div>
+            <p className="cn-big">{t("cine.bessTitle")}</p>
+            <p className="mt-5 max-w-[32em] leading-relaxed text-[color:var(--cn-nevoa)]">{t("cine.bessBody")}</p>
+          </div>
+          <div>
+            <div className="mb-3 flex justify-between text-xs text-[color:var(--cn-nevoa)]">
+              <span>00h</span>
+              <span>{t("cine.bessPlan", { h: peakHour })}</span>
+              <span>23h</span>
+            </div>
+            <div className="flex h-24 items-end gap-[2px]" role="img" aria-label={t("cine.bessPlan", { h: peakHour })}>
+              {plan.map((p, h) => (
+                <div
+                  key={h}
+                  className="flex-1 rounded-sm"
+                  style={{
+                    background: p === "charge" ? "var(--cn-arco)" : p === "discharge" ? "var(--cn-sodio)" : "var(--cn-aco)",
+                    height: p === "hold" ? "30%" : "100%",
+                  }}
+                />
+              ))}
+            </div>
+            <div className="mt-4 flex gap-6 text-sm">
+              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[color:var(--cn-arco)]" />{t("cine.charge")}</span>
+              <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-sm bg-[color:var(--cn-sodio)]" />{t("cine.discharge")}</span>
+            </div>
+          </div>
         </section>
 
-        <section className="px-6 py-20" style={{ background: "var(--vt-painel)" }}>
-          <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
-            <p className="vt-h2 max-w-[20ch]">{t("land.final")}</p>
-            <Link href="/login" className="vt-btn vt-btn-lit">{t("land.demo")}</Link>
-          </div>
+        <section className="px-[4%] pt-6 text-center">
+          <p className="cn-big mx-auto max-w-[18ch]">{t("cine.final")}</p>
+          <button className="cn-play mt-8" onClick={() => go("/login")}>
+            <Play className="h-5 w-5 fill-current" /> {t("land.demo")}
+          </button>
         </section>
       </main>
 
-      <footer className="vt-small mx-auto max-w-6xl px-6 py-8">© {new Date().getFullYear()} EFFIO. {t("land.rights")}</footer>
+      <footer className="px-[4%] pb-10 text-sm text-[color:var(--cn-nevoa)]">© {new Date().getFullYear()} EFFIO. {t("land.rights")}</footer>
     </div>
   );
 }

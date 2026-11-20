@@ -26,6 +26,7 @@ import Aprovacoes from "@/pages/aprovacoes";
 import { Layout } from "@/components/layout";
 import { I18nProvider, LangKeyed } from "@/i18n";
 import Anomalies from "@/pages/anomalies";
+import Inicio from "@/pages/inicio";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,9 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/cadastro" component={Cadastro} />
 
+      <Route path="/inicio">
+        <Layout><Inicio /></Layout>
+      </Route>
       <Route path="/anomalies">
         <Layout><Anomalies /></Layout>
       </Route>

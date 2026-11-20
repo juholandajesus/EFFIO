@@ -3,9 +3,10 @@ import {
   Zap, Building2, Upload, BarChart3, Activity, FileText,
   BatteryCharging, LayoutDashboard, GitMerge, LogOut,
   Building, Cpu, FileCheck, MessageSquare, UserCheck,
-  Radar,
+  Radar, Home,
 } from "lucide-react";
 import { useT } from "@/i18n";
+import { FaiscaMark } from "./faisca-mark";
 import type { Dict } from "@/i18n/en";
 
 import {
@@ -19,6 +20,7 @@ import { useAuth } from "@/context/auth-context";
 type NavItem = { title: keyof Dict; url: string; icon: React.ElementType };
 
 const AI_ITEMS: NavItem[] = [
+  { title: "nav.home", url: "/inicio", icon: Home },
   { title: "nav.anomalies", url: "/anomalies", icon: Radar },
 ];
 
@@ -73,12 +75,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4 flex flex-row items-center gap-2">
-        <div className="bg-primary text-primary-foreground p-1 rounded-md flex items-center justify-center">
-          <Zap className="h-6 w-6" />
-        </div>
+      <SidebarHeader className="p-4 flex flex-row items-center gap-2.5">
+        <FaiscaMark size={30} />
         <div className="flex flex-col leading-none">
-          <span className="font-bold text-xl tracking-tight">EFFIO</span>
+          <span className="font-bold text-lg tracking-[0.22em]" style={{ fontStretch: "125%" }}>EFFIO</span>
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("brand.tagline")}</span>
         </div>
       </SidebarHeader>

@@ -79,15 +79,15 @@ export function useT() {
   return ctx;
 }
 
-export function LangToggle() {
+export function LangToggle({ dark = false }: { dark?: boolean }) {
   const { lang, setLang } = useT();
   return (
-    <div className="flex items-center rounded-md border text-xs font-semibold overflow-hidden" data-testid="lang-toggle">
+    <div className={`flex items-center rounded-md border text-xs font-semibold overflow-hidden ${dark ? "border-white/25" : ""}`} data-testid="lang-toggle">
       {(["en", "pt"] as Lang[]).map((l) => (
         <button
           key={l}
           onClick={() => setLang(l)}
-          className={`px-2 py-1 uppercase transition-colors ${lang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+          className={`px-2 py-1 uppercase transition-colors ${lang === l ? "bg-primary text-primary-foreground" : dark ? "text-white/70 hover:bg-white/10" : "text-muted-foreground hover:bg-muted"}`}
         >
           {l}
         </button>

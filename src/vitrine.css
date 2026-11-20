@@ -169,3 +169,138 @@
   .vt-flicker { animation: none; }
   .vt-callout { transition: none; }
 }
+
+/* ───────────────────────── cinema (landing, login, Início) ───────────────────────── */
+:root {
+  --cn-breu: #090c10;
+  --cn-painel: #12171d;
+  --cn-aco: #1e262f;
+  --cn-sodio: #f5a524;
+  --cn-arco: #8fd8ff;
+  --cn-cal: #edf1f4;
+  --cn-nevoa: #8a97a3;
+}
+
+.cn {
+  background: var(--cn-breu);
+  color: var(--cn-cal);
+  font-family: var(--vt-font);
+  -webkit-font-smoothing: antialiased;
+}
+.cn :focus-visible { outline: 2px solid var(--cn-arco); outline-offset: 3px; border-radius: 6px; }
+
+.cn-hero-title {
+  font-stretch: 125%;
+  font-weight: 300;
+  font-size: clamp(2.8rem, 6.4vw, 6.2rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+.cn-hero-title b { font-weight: 700; }
+.cn-nav a, .cn-nav button { font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; font-stretch: 112%; }
+.cn-h2 { font-stretch: 118%; font-weight: 600; font-size: clamp(1.15rem, 1.6vw, 1.45rem); letter-spacing: -0.005em; }
+.cn-big { font-stretch: 122%; font-weight: 300; font-size: clamp(2rem, 4.2vw, 3.8rem); line-height: 1; letter-spacing: -0.03em; }
+.cn-muted { color: var(--cn-nevoa); }
+
+/* line-by-line reveal for the hero title (the one orchestrated moment) */
+.cn-reveal > span { display: block; overflow: hidden; }
+.cn-reveal > span > span { display: block; transform: translateY(105%); animation: cn-rise 1s cubic-bezier(0.2, 0.7, 0.1, 1) forwards; }
+.cn-reveal > span:nth-child(2) > span { animation-delay: 0.12s; }
+.cn-fade { opacity: 0; animation: cn-fade 1.2s ease forwards; }
+@keyframes cn-rise { to { transform: none; } }
+@keyframes cn-fade { to { opacity: 1; } }
+
+/* Netflix-style buttons */
+.cn-play {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  height: 3.1rem; padding: 0 1.6rem; border-radius: 6px;
+  background: #fff; color: #090c10; font-weight: 700; font-stretch: 108%;
+  transition: background-color 0.15s;
+}
+.cn-play:hover { background: rgba(255, 255, 255, 0.82); }
+.cn-more {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  height: 3.1rem; padding: 0 1.4rem; border-radius: 6px;
+  background: rgba(109, 118, 128, 0.45); color: #fff; font-weight: 600; font-stretch: 108%;
+  backdrop-filter: blur(6px);
+  transition: background-color 0.15s;
+}
+.cn-more:hover { background: rgba(109, 118, 128, 0.3); }
+
+/* rows */
+.cn-row-track {
+  display: flex; gap: 0.5rem; overflow-x: auto; scroll-snap-type: x proximity;
+  padding: 2.5rem 4% 6.5rem; margin: -2.5rem 0 -6.5rem;
+  scrollbar-width: none;
+}
+.cn-row-track::-webkit-scrollbar { display: none; }
+.cn-arrow {
+  position: absolute; top: 0; bottom: 0; width: 4%; min-width: 2.5rem; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(9, 12, 16, 0.55); color: #fff; opacity: 0; transition: opacity 0.2s;
+}
+.cn-row:hover .cn-arrow { opacity: 1; }
+.cn-arrow:focus-visible { opacity: 1; }
+
+/* tiles grow on hover and reveal details, like the Netflix card */
+.cn-tile {
+  position: relative; flex: 0 0 auto; scroll-snap-align: start;
+  width: clamp(15rem, 22vw, 19rem); aspect-ratio: 16 / 9;
+  border-radius: 6px; background: var(--cn-painel);
+  transition: transform 0.32s cubic-bezier(0.2, 0.7, 0.1, 1), box-shadow 0.32s, z-index 0s 0.32s;
+  transform-origin: center;
+  z-index: 1;
+}
+.cn-tile:hover, .cn-tile:focus-within {
+  transform: scale(1.22);
+  z-index: 10;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+  transition: transform 0.32s cubic-bezier(0.2, 0.7, 0.1, 1) 0.15s, box-shadow 0.32s 0.15s, z-index 0s;
+}
+.cn-row-track > .cn-tile:first-child { transform-origin: left center; }
+.cn-row-track > .cn-tile:last-child { transform-origin: right center; }
+.cn-tile-face { position: absolute; inset: 0; border-radius: 6px; overflow: hidden; }
+.cn-tile-details {
+  position: absolute; left: 0; right: 0; top: 100%;
+  background: var(--cn-painel); border-radius: 0 0 6px 6px;
+  padding: 0.7rem 0.8rem 0.8rem; font-size: 0.72rem; line-height: 1.35;
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.cn-tile:hover .cn-tile-details, .cn-tile:focus-within .cn-tile-details { opacity: 1; pointer-events: auto; transition: opacity 0.25s 0.2s; }
+.cn-tile:hover .cn-tile-face, .cn-tile:focus-within .cn-tile-face { border-radius: 6px 6px 0 0; }
+
+/* Top-10 style ranking numerals */
+.cn-rank {
+  flex: none;
+  font-stretch: 125%; font-weight: 800; font-size: clamp(7rem, 12vw, 10rem); line-height: 0.8;
+  color: var(--cn-breu); -webkit-text-stroke: 2px #4a5866; letter-spacing: -0.06em;
+}
+
+.cn-badge { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 3px; padding: 0.1rem 0.4rem; font-size: 0.68rem; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cn-reveal > span > span, .cn-fade { animation: none; transform: none; opacity: 1; }
+  .cn-tile, .cn-tile:hover { transition: none; transform: none; }
+}
+
+/* app shell in cinema mode (Início): same components, night palette */
+.cinema-shell {
+  --background: 214 28% 5%;
+  --foreground: 204 20% 94%;
+  --card: 213 23% 9%;
+  --card-foreground: 204 20% 94%;
+  --card-border: 213 21% 16%;
+  --popover: 213 23% 9%;
+  --popover-foreground: 204 20% 94%;
+  --popover-border: 213 21% 16%;
+  --muted: 213 21% 14%;
+  --muted-foreground: 209 10% 60%;
+  --border: 213 21% 16%;
+  --input: 213 21% 18%;
+  --sidebar: 214 28% 6%;
+  --sidebar-foreground: 204 20% 90%;
+  --sidebar-border: 213 21% 13%;
+  --sidebar-accent: 213 21% 13%;
+  --sidebar-accent-foreground: 204 20% 96%;
+  color-scheme: dark;
+}

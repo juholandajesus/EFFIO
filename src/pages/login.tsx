@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -14,7 +13,8 @@ import { LangToggle, useT } from "@/i18n";
 import { isDemoMode } from "@/lib/api-base";
 import { DEMO_EMAIL, DEMO_SENHA } from "@/mock/seed";
 import { FaiscaMark } from "@/components/faisca-mark";
-import { LoadTrace } from "@/components/load-trace";
+import { EnergyCore } from "@/components/energy-core";
+import { Play } from "lucide-react";
 import { usePlant } from "@/industry/use-plant";
 import { kpis } from "@/industry/engine";
 
@@ -51,7 +51,7 @@ export default function Login() {
         return;
       }
       login(data.token, data.refresh_token, data.usuario, data.empresa);
-      setLocation("/dashboard");
+      setLocation("/inicio");
     } catch (err) {
       console.error("[EFFIO] falha na requisição:", err);
       toast({
@@ -65,71 +65,63 @@ export default function Login() {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.15fr_1fr]" style={{ fontFamily: "var(--vt-font)" }}>
-      <aside className="vt relative hidden flex-col justify-between overflow-hidden lg:flex">
-        <Link href="/" className="flex items-center gap-2.5 px-10 pt-8">
-          <FaiscaMark size={30} />
-          <span className="text-xl font-extrabold" style={{ fontStretch: "125%" }}>EFFIO</span>
-        </Link>
-        <div className="px-10">
-          <p className="vt-h2 max-w-[16ch]">{t("login.faisca", { cost: fmt.money(savings) })}</p>
-          <p className="vt-small mt-3">{t("login.faiscaSign")}</p>
-        </div>
-        <LoadTrace empresaId={1} compact callouts={() => null} />
-      </aside>
+    <div className="cn relative flex min-h-screen items-center justify-end overflow-hidden">
+      <EnergyCore focus={[-0.4, 0]} scale={0.95} className="hidden lg:block" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-l from-[#090c10]/90 via-[#090c10]/40 to-transparent" />
 
-      <main className="relative flex flex-col items-center justify-center bg-background p-6">
-        <div className="absolute right-5 top-5"><LangToggle /></div>
-        <Link href="/" className="mb-10 flex items-center gap-2.5 lg:hidden">
-          <FaiscaMark size={30} />
-          <span className="text-xl font-extrabold" style={{ fontStretch: "125%" }}>EFFIO</span>
-        </Link>
-        <div className="w-full max-w-sm">
-          <h1 className="text-3xl font-extrabold" style={{ fontStretch: "118%" }}>{t("login.title")}</h1>
-          <p className="mt-1.5 text-muted-foreground">{t("login.subtitle")}</p>
+      <Link href="/" className="cn-nav absolute left-[4%] top-5 z-10 flex items-center gap-2.5">
+        <FaiscaMark size={26} />
+        <span className="text-lg font-bold tracking-[0.3em]" style={{ fontStretch: "125%" }}>EFFIO</span>
+      </Link>
+      <div className="absolute right-[4%] top-5 z-10"><LangToggle dark /></div>
 
-          {isDemoMode && (
-            <button
-              type="button"
-              disabled={isLoading}
-              data-testid="demo-br"
-              onClick={() => onSubmit({ email: DEMO_EMAIL, senha: DEMO_SENHA })}
-              className="vt mt-8 flex w-full items-center gap-3 rounded-2xl p-4 text-left transition-shadow hover:shadow-[0_0_0_2px_var(--vt-arco)] disabled:opacity-60"
-            >
-              <FaiscaMark size={34} flicker />
-              <span>
-                <span className="block font-bold" style={{ fontStretch: "110%" }}>{t("login.demoBr")}</span>
-                <span className="vt-small block">{t("login.demoHint")}</span>
-              </span>
+      <p className="pointer-events-none absolute bottom-[8vh] left-[4%] z-10 hidden max-w-md text-lg leading-snug lg:block" style={{ fontStretch: "110%" }}>
+        {t("login.faisca", { cost: fmt.money(savings) })}
+        <span className="mt-2 block text-sm text-[color:var(--cn-nevoa)]">{t("login.faiscaSign")}</span>
+      </p>
+
+      <main className="relative z-10 mx-[4%] my-20 w-full max-w-md rounded-2xl border border-white/10 bg-[#0d1217]/80 p-8 backdrop-blur-xl md:p-10">
+        <h1 className="text-3xl font-light" style={{ fontStretch: "122%" }}>{t("login.title")}</h1>
+        <p className="mt-1.5 text-[color:var(--cn-nevoa)]">{t("login.subtitle")}</p>
+
+        {isDemoMode && (
+          <button
+            type="button"
+            disabled={isLoading}
+            data-testid="demo-br"
+            onClick={() => onSubmit({ email: DEMO_EMAIL, senha: DEMO_SENHA })}
+            className="cn-play mt-8 w-full justify-center disabled:opacity-60"
+          >
+            <Play className="h-5 w-5 fill-current" /> {t("login.demoBr")}
+          </button>
+        )}
+        {isDemoMode && <p className="mt-2 text-center text-xs text-[color:var(--cn-nevoa)]">{t("login.demoHint")}</p>}
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-4 border-t border-white/10 pt-6">
+            <FormField control={form.control} name="email" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-[color:var(--cn-nevoa)]">{t("login.email")}</FormLabel>
+                <FormControl><Input className="h-11 border-white/15 bg-white/5 text-white placeholder:text-white/35" placeholder={t("login.emailPh")} autoComplete="email" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="senha" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-[color:var(--cn-nevoa)]">{t("login.password")}</FormLabel>
+                <FormControl><Input className="h-11 border-white/15 bg-white/5 text-white" type="password" autoComplete="current-password" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <button type="submit" className="cn-more w-full justify-center" disabled={isLoading}>
+              {isLoading ? t("login.loading") : t("login.submit")}
             </button>
-          )}
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-4">
-              <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("login.email")}</FormLabel>
-                  <FormControl><Input className="h-11" placeholder={t("login.emailPh")} autoComplete="email" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="senha" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("login.password")}</FormLabel>
-                  <FormControl><Input className="h-11" type="password" autoComplete="current-password" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <Button type="submit" className="mt-2 h-11 w-full rounded-full text-base font-semibold" disabled={isLoading}>
-                {isLoading ? t("login.loading") : t("login.submit")}
-              </Button>
-            </form>
-          </Form>
-          <p className="mt-8 text-sm text-muted-foreground">
-            {t("login.noAccount")}{" "}
-            <Link href="/cadastro" className="font-semibold text-foreground underline underline-offset-4">{t("login.signup")}</Link>
-          </p>
-        </div>
+          </form>
+        </Form>
+        <p className="mt-6 text-sm text-[color:var(--cn-nevoa)]">
+          {t("login.noAccount")}{" "}
+          <Link href="/cadastro" className="font-semibold text-white underline underline-offset-4">{t("login.signup")}</Link>
+        </p>
       </main>
     </div>
   );
