@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { appLocale } from "@/i18n";
 import { useGetDashboard, getGetDashboardQueryKey, useListEmpresas, getListEmpresasQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,11 +36,11 @@ export default function Dashboard() {
   });
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    return new Intl.NumberFormat(appLocale(), { style: 'currency', currency: 'BRL' }).format(value);
   };
 
   const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value);
+    return new Intl.NumberFormat(appLocale(), { maximumFractionDigits: 2 }).format(value);
   };
 
   return (
@@ -98,7 +99,7 @@ export default function Dashboard() {
                 <Database className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold" data-testid="kpi-registros">{dashboard.kpis.total_registros.toLocaleString('pt-BR')}</div>
+                <div className="text-2xl font-bold" data-testid="kpi-registros">{dashboard.kpis.total_registros.toLocaleString(appLocale())}</div>
                 <p className="text-xs text-muted-foreground mt-1">Linhas processadas</p>
               </CardContent>
             </Card>

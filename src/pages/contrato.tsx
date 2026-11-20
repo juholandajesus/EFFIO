@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { appLocale } from "@/i18n";
 import { FileText, Save, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +95,7 @@ export default function Contrato() {
     onError: (e: Error) => toast({ title: "Erro", description: e.message, variant: "destructive" }),
   });
 
-  const fmt = (v: number, prefix = "") => `${prefix}${v.toLocaleString("pt-BR")}`;
+  const fmt = (v: number, prefix = "") => `${prefix}${v.toLocaleString(appLocale())}`;
 
   return (
     <div className="space-y-6">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { appLocale } from "@/i18n";
 import { UserCheck, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,7 +101,7 @@ export default function Aprovacoes() {
       {pendentes.length > 0 && (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
           <Clock className="h-4 w-4 text-amber-600" />
-          <p className="text-sm text-amber-800 font-medium">{pendentes.length} colaborador{pendentes.length > 1 ? "es aguardando" : " aguardando"} aprovação</p>
+          <p className="text-sm text-amber-800 font-medium">{pendentes.length} {pendentes.length > 1 ? "colaboradores aguardando aprovação" : "colaborador aguardando aprovação"}</p>
         </div>
       )}
 
@@ -134,7 +135,7 @@ export default function Aprovacoes() {
                     <TableCell className="text-muted-foreground">{p.email}</TableCell>
                     <TableCell className="text-muted-foreground">{p.telefone}</TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                      {new Date(p.created_at).toLocaleDateString(appLocale())}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">

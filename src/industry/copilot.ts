@@ -10,7 +10,7 @@
  * plugged in without touching the UI. Expected response: { "answer": string }.
  */
 import {
-  carbon, dailySeries, detectAnomalies, forecast, kpis, lineName, lineStats, productStats, type Anomaly,
+  dailySeries, detectAnomalies, forecast, kpis, lineName, lineStats, productStats, type Anomaly,
 } from "./engine";
 import { getPlant } from "./engine";
 import type { Fmt } from "./use-plant";
@@ -34,16 +34,14 @@ export function suggestions(lang: Lang): string[] {
     ? [
         "Por que o consumo subiu esta semana?",
         "Onde estou desperdiçando energia?",
-        "Qual o custo de energia por tonelada de cada produto?",
         "Qual será o pico de demanda nos próximos 7 dias?",
-        "Quanto CO₂ emitimos e como reduzir?",
+        "Quanta energia gastamos com as linhas paradas?",
       ]
     : [
         "Why did consumption go up this week?",
         "Where am I wasting energy?",
-        "What is the energy cost per unit of each product?",
         "What will peak demand be in the next 7 days?",
-        "How much CO₂ do we emit and how can we cut it?",
+        "How much energy do we use while lines are idle?",
       ];
 }
 
@@ -229,50 +227,12 @@ function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt):
     return { text: parts.join("\n"), links: [{ label: pt ? "Ver previsão" : "Open forecast", href: "/anomalies#forecast" }], source: "local" };
   }
 
-  // ── carbon
-  if (has(q, ["co2", "co₂", "carbon", "carbono", "emiss", "emit", "esg", "cbam", "scope", "escopo", "clima", "climate", "net zero"])) {
-    const c = carbon(empresaId);
-    const parts = [
-      pt
-        ? `Nos últimos 30 dias, a eletricidade da planta gerou **${fmt.num(c.co2_30T, 1)} tCO₂e** (Escopo 2, fator da rede ${c.factor} kgCO₂e/kWh). No ritmo atual: **${fmt.num(c.annualT)} t/ano**.`
-        : `In the last 30 days the plant's electricity produced **${fmt.num(c.co2_30T, 1)} tCO₂e** (Scope 2, grid factor ${c.factor} kgCO₂e/kWh). At this rate: **${fmt.num(c.annualT)} t/year**.`,
-      pt ? "Alavancas de redução (t/ano):" : "Reduction levers (t/year):",
-      `- ${pt ? "Corrigir as anomalias detectadas" : "Fix the detected anomalies"}: **${fmt.num(c.levers.fixAnomalies)} t**`,
-      `- ${pt ? "Cortar 30% do consumo com linhas paradas" : "Cut 30% of idle-line consumption"}: **${fmt.num(c.levers.shiftIdle)} t**`,
-      `- ${pt ? "Cobrir 20% com solar (PPA ou on-site)" : "Cover 20% with solar (PPA or on-site)"}: **${fmt.num(c.levers.solar20)} t**`,
-    ];
-    return { text: parts.join("\n"), links: [{ label: pt ? "Ver relatório ESG" : "Open ESG report", href: "/carbon" }], source: "local" };
-  }
-
-  // ── per product
-  const products = productStats(empresaId, 30);
-  const named = products.find((p) => q.includes(norm(p.sku)) || norm(p.name.en).split(" ").some((w) => w.length > 3 && q.includes(w)) || norm(p.name.pt).split(" ").some((w) => w.length > 3 && q.includes(w)));
-  if (named || has(q, ["per unit", "por unidade", "per ton", "por tonelada", "produto", "product", "kwh/", "custo por", "cost per", "sku", "intensidade", "intensity"])) {
-    const list = named ? [named] : products;
-    const parts = [
-      pt ? "Energia por produto (últimos 30 dias, incluindo rateio de utilidades):" : "Energy per product (last 30 days, utilities allocated):",
-    ];
-    for (const p of list) {
-      parts.push(
-        `- **${L(p.name)}**: ${fmt.num(p.kwhPerUnit, 1)} kWh/${L(p.unit)} · ${fmt.money(p.costPerUnit, 2)}/${L(p.unit)} · ${fmt.num(p.co2PerUnit, 1)} kgCO₂e/${L(p.unit)}${p.driftPct >= 6 ? (pt ? ` · ⚠ ${fmt.pct(p.driftPct)} na última semana` : ` · ⚠ ${fmt.pct(p.driftPct)} last week`) : ""}`,
-      );
-    }
-    const worst = [...products].sort((a, b) => b.driftPct - a.driftPct)[0];
-    if (worst && worst.driftPct >= 6)
-      parts.push(
-        pt
-          ? `Ponto de atenção: **${L(worst.name)}** está ${worst.driftPct}% acima da própria referência. Voltar à referência economiza cerca de ${fmt.money((worst.kwhPerUnit - worst.baselineKwhPerUnit) * worst.units * info.region.tariffPerKwh)} por mês.`
-          : `Watch out: **${L(worst.name)}** is ${worst.driftPct}% above its own baseline. Getting back to baseline saves about ${fmt.money((worst.kwhPerUnit - worst.baselineKwhPerUnit) * worst.units * info.region.tariffPerKwh)} per month.`,
-      );
-    return { text: parts.join("\n"), links: [{ label: pt ? "Ver energia por produção" : "Open energy × production", href: "/production" }], source: "local" };
-  }
-
   // ── idle
   if (has(q, ["idle", "ocios", "parad", "standby", "weekend", "fim de semana", "noite", "night"])) {
     const lines = lineStats(empresaId, 30).sort((a, b) => b.idleKwh - a.idleKwh);
     const parts = [pt ? "Energia consumida fora de produção (30 dias):" : "Energy used outside production (30 days):"];
     for (const l of lines.slice(0, 4)) parts.push(`- **${L(l.name)}**: ${fmt.energy(l.idleKwh)} (${fmt.num(l.idlePct, 1)}%)`);
-    return { text: parts.join("\n"), links: [{ label: pt ? "Ver linhas" : "Open lines", href: "/production" }], source: "local" };
+    return { text: parts.join("\n"), links: [{ label: pt ? "Ver anomalias" : "Open anomalies", href: "/anomalies" }], source: "local" };
   }
 
   // ── summary (default for greetings / "how are we doing")
@@ -280,11 +240,11 @@ function localAnswer(question: string, empresaId: number, lang: Lang, fmt: Fmt):
   const top = detectAnomalies(empresaId)[0];
   const parts = [
     pt
-      ? `Resumo de ${info.plant.name} (30 dias): **${fmt.energy(k.kwh)}**, ${fmt.money(k.cost)}, ${fmt.num(k.co2Tonnes, 1)} tCO₂e. Pico de ${fmt.num(k.peakKw)} kW (${fmt.num((k.peakKw / k.contractedKw) * 100, 0)}% do contratado).`
-      : `${info.plant.name}, last 30 days: **${fmt.energy(k.kwh)}**, ${fmt.money(k.cost)}, ${fmt.num(k.co2Tonnes, 1)} tCO₂e. Peak ${fmt.num(k.peakKw)} kW (${fmt.num((k.peakKw / k.contractedKw) * 100, 0)}% of contracted).`,
+      ? `Resumo de ${info.plant.name} (30 dias): **${fmt.energy(k.kwh)}**, ${fmt.money(k.cost)}. Pico de ${fmt.num(k.peakKw)} kW (${fmt.num((k.peakKw / k.contractedKw) * 100, 0)}% do contratado).`
+      : `${info.plant.name}, last 30 days: **${fmt.energy(k.kwh)}**, ${fmt.money(k.cost)}. Peak ${fmt.num(k.peakKw)} kW (${fmt.num((k.peakKw / k.contractedKw) * 100, 0)}% of contracted).`,
   ];
   if (top) parts.push(pt ? `Prioridade nº 1: ${anomalyTitle(top, lang, L(lineName(empresaId, top.lineId)), prodName(top.sku))}.` : `Priority #1: ${anomalyTitle(top, lang, L(lineName(empresaId, top.lineId)), prodName(top.sku))}.`);
-  parts.push(pt ? "Você pode me perguntar sobre variação de consumo, desperdício, custo por produto, previsão de pico ou emissões." : "Ask me about consumption changes, waste, cost per product, peak forecast or emissions.");
+  parts.push(pt ? "Você pode me perguntar sobre variação de consumo, desperdício, previsão de pico ou consumo com as linhas paradas." : "Ask me about consumption changes, waste, peak forecast or energy used while lines are idle.");
   return { text: parts.join("\n"), source: "local" };
 }
 

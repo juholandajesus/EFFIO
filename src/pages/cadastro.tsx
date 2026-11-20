@@ -1,3 +1,4 @@
+import { appLocale } from "@/i18n";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -88,7 +89,7 @@ export default function Cadastro() {
                 <FormField control={form.control} name="nome" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome Completo</FormLabel>
-                    <FormControl><Input placeholder="João da Silva" {...field} /></FormControl>
+                    <FormControl><Input placeholder={appLocale() === "pt-BR" ? "João da Silva" : "John Smith"} {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -104,7 +105,7 @@ export default function Cadastro() {
               <FormField control={form.control} name="email" render={({ field }) => (
                 <FormItem>
                   <FormLabel>E-mail Corporativo</FormLabel>
-                  <FormControl><Input placeholder="gestor@empresa.com.br" {...field} /></FormControl>
+                  <FormControl><Input placeholder={appLocale() === "pt-BR" ? "gestor@empresa.com.br" : "manager@company.com"} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

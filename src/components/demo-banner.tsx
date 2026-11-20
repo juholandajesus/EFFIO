@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FlaskConical, X } from "lucide-react";
 import { isDemoMode } from "@/lib/api-base";
-import { DEMO_EMAIL, DEMO_EMAIL_GULF, DEMO_SENHA } from "@/mock/seed";
+import { DEMO_EMAIL, DEMO_SENHA } from "@/mock/seed";
 import { useT } from "@/i18n";
 import { resetDemoDb } from "@/mock/server";
 
@@ -46,9 +46,7 @@ export function DemoBanner() {
         {t("demo.body")}
       </p>
       <p className="mt-1.5 text-muted-foreground">
-        🇦🇪 <span className="font-mono text-foreground">{DEMO_EMAIL_GULF}</span>
-        <br />
-        🇧🇷 <span className="font-mono text-foreground">{DEMO_EMAIL}</span>
+        Login: <span className="font-mono text-foreground">{DEMO_EMAIL}</span>
         <br />
         {t("login.password")}: <span className="font-mono text-foreground">{DEMO_SENHA}</span>
       </p>

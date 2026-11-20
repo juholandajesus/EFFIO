@@ -1,19 +1,18 @@
 import { Link } from "wouter";
-import { Zap, ArrowRight, Boxes, Sparkles, Radar, Leaf, PlugZap, Factory } from "lucide-react";
+import { Zap, ArrowRight, BarChart3, Sparkles, Radar, BatteryCharging, Upload, Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LangToggle, useT } from "@/i18n";
-import { REGIONS } from "@/industry/regions";
 
 export default function Landing() {
-  const { t, lang } = useT();
+  const { t } = useT();
   const features = [
-    { icon: Boxes, title: t("land.f1"), body: t("land.f1b") },
-    { icon: Sparkles, title: t("land.f2"), body: t("land.f2b") },
-    { icon: Radar, title: t("land.f3"), body: t("land.f3b") },
-    { icon: Leaf, title: t("land.f4"), body: t("land.f4b") },
+    { icon: BarChart3, title: t("land.f1"), body: t("land.f1b") },
+    { icon: Radar, title: t("land.f2"), body: t("land.f2b") },
+    { icon: Sparkles, title: t("land.f3"), body: t("land.f3b") },
+    { icon: BatteryCharging, title: t("land.f4"), body: t("land.f4b") },
   ];
   const steps = [
-    { icon: PlugZap, title: t("land.s1"), body: t("land.s1b") },
+    { icon: Upload, title: t("land.s1"), body: t("land.s1b") },
     { icon: Factory, title: t("land.s2"), body: t("land.s2b") },
     { icon: Zap, title: t("land.s3"), body: t("land.s3b") },
   ];
@@ -54,13 +53,6 @@ export default function Landing() {
             <Button size="lg" variant="outline" className="h-14 px-8 text-lg" asChild>
               <Link href="/cadastro">{t("land.signup")}</Link>
             </Button>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3 text-sm text-muted-foreground">
-            {Object.values(REGIONS).map((r) => (
-              <span key={r.code} className="rounded-full border px-3 py-1">
-                {r.flag} {r.name[lang]}
-              </span>
-            ))}
           </div>
         </section>
 

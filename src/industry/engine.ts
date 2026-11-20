@@ -376,25 +376,6 @@ export function productStats(empresaId: number, days = 30): ProductStat[] {
   });
 }
 
-/** kWh/unit per day for one product (trend chart). */
-export function productTrend(empresaId: number, sku: string, days = 30) {
-  const s = sim(empresaId)!;
-  const rows: { date: string; kwhPerUnit: number | null }[] = [];
-  for (let i = DAYS - days; i < DAYS; i++) {
-    let u = 0;
-    let k = 0;
-    for (const l of s.plant.lines) {
-      if (l.kind !== "production") continue;
-      const p = productOfDay(l, i);
-      if (p?.sku !== sku) continue;
-      u += s.output[l.id][sku][i];
-      k += s.load[l.id].slice(i * 24, i * 24 + 24).reduce((a, b) => a + b, 0);
-    }
-    rows.push({ date: isoDay(dayDate(i)), kwhPerUnit: u > 0 ? round(k / u, 1) : null });
-  }
-  return rows;
-}
-
 export interface LineStat {
   id: string;
   name: L;
@@ -431,12 +412,6 @@ export function lineStats(empresaId: number, days = 30): LineStat[] {
     sharePct: round((r.kwh / tot) * 100, 1),
     idlePct: r.kwh ? round((r.idleKwh / r.kwh) * 100, 1) : 0,
   }));
-}
-
-export function workOrders(empresaId: number, limit = 40) {
-  const s = sim(empresaId)!;
-  const done = [...s.orders].sort((a, b) => b.dayIndex - a.dayIndex || a.lineId.localeCompare(b.lineId)).slice(0, limit);
-  return { planned: s.plannedOrders, completed: done };
 }
 
 export function productName(empresaId: number, sku: string): { name: L; unit: L } | null {
@@ -721,42 +696,5 @@ export function kpis(empresaId: number, days = 30) {
     totalUnits,
     idleKwh: lines.reduce((a, l) => a + l.idleKwh, 0),
     idlePct: round((lines.reduce((a, l) => a + l.idleKwh, 0) / (kwh || 1)) * 100, 1),
-  };
-}
-
-export function carbon(empresaId: number) {
-  const s = sim(empresaId)!;
-  const series = dailySeries(empresaId, DAYS);
-  const f = s.region.gridFactorKgPerKwh;
-  const months = new Map<string, { kwh: number; co2: number }>();
-  for (const p of series) {
-    const m = p.date.slice(0, 7);
-    const cur = months.get(m) ?? { kwh: 0, co2: 0 };
-    cur.kwh += p.kwh;
-    cur.co2 += p.co2Kg;
-    months.set(m, cur);
-  }
-  const last30 = series.slice(-30);
-  const kwh30 = last30.reduce((a, p) => a + p.kwh, 0);
-  const co2_30 = last30.reduce((a, p) => a + p.co2Kg, 0);
-  const annualT = (co2_30 / 1000) * (365 / 30);
-  const annualKwh = kwh30 * (365 / 30);
-  const anomalies = detectAnomalies(empresaId);
-  const savingsKwhAnnual = anomalies.reduce((a, x) => a + x.annualizedCost / s.region.tariffPerKwh, 0);
-  return {
-    factor: f,
-    factorSource: s.region.gridFactorSource,
-    renewableShare: s.plant.renewableShare,
-    daily: last30.map((p) => ({ date: p.date, co2Kg: p.co2Kg })),
-    monthly: [...months.entries()].map(([month, v]) => ({ month, kwh: round(v.kwh, 0), co2T: round(v.co2 / 1000, 1) })),
-    co2_30T: round(co2_30 / 1000, 1),
-    annualT: round(annualT, 0),
-    annualKwh: round(annualKwh, 0),
-    /** reduction levers, tonnes per year */
-    levers: {
-      fixAnomalies: round((savingsKwhAnnual * f * (1 - s.plant.renewableShare)) / 1000, 0),
-      solar20: round((annualKwh * 0.2 * f) / 1000, 0),
-      shiftIdle: round((kpis(empresaId).idleKwh * (365 / 30) * 0.3 * f * (1 - s.plant.renewableShare)) / 1000, 0),
-    },
   };
 }

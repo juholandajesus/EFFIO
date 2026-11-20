@@ -1,4 +1,5 @@
 import { GitMerge, Zap, BatteryCharging, TrendingUp, BarChart3, Activity } from "lucide-react";
+import { appLocale } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlanoGuard } from "@/components/plano-guard";
 import { useEmpresa } from "@/context/empresa-context";
@@ -34,7 +35,7 @@ export default function DashboardIntegrado() {
 
   const formatMwh = (v: number) => `${v.toFixed(1)} MWh`;
   const formatCurrency = (v: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+    new Intl.NumberFormat(appLocale(), { style: "currency", currency: "BRL" }).format(v);
 
   const topEmpresas = dashboard?.por_empresa?.slice(0, 5) ?? [];
 

@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { LangToggle, useT } from "@/i18n";
 import { isDemoMode } from "@/lib/api-base";
-import { DEMO_EMAIL, DEMO_EMAIL_GULF, DEMO_SENHA } from "@/mock/seed";
+import { DEMO_EMAIL, DEMO_SENHA } from "@/mock/seed";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid e-mail / E-mail inválido" }),
@@ -47,7 +47,7 @@ export default function Login() {
         return;
       }
       login(data.token, data.refresh_token, data.usuario, data.empresa);
-      setLocation("/overview");
+      setLocation("/dashboard");
     } catch (err) {
       console.error("[EFFIO] falha na requisição:", err);
       toast({
@@ -98,14 +98,9 @@ export default function Login() {
           {isDemoMode && (
             <div className="mt-6 space-y-2 border-t pt-4">
               <div className="text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("login.quickDemo")}</div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" type="button" disabled={isLoading} data-testid="demo-gulf" onClick={() => onSubmit({ email: DEMO_EMAIL_GULF, senha: DEMO_SENHA })}>
-                  🇦🇪 {t("login.demoGulf")}
-                </Button>
-                <Button variant="outline" type="button" disabled={isLoading} data-testid="demo-br" onClick={() => onSubmit({ email: DEMO_EMAIL, senha: DEMO_SENHA })}>
-                  🇧🇷 {t("login.demoBr")}
-                </Button>
-              </div>
+              <Button variant="outline" type="button" className="w-full" disabled={isLoading} data-testid="demo-br" onClick={() => onSubmit({ email: DEMO_EMAIL, senha: DEMO_SENHA })}>
+                {t("login.demoBr")}
+              </Button>
             </div>
           )}
         </CardContent>

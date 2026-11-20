@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { appLocale } from "@/i18n";
 import { MessageSquare, Plus, Send, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -220,7 +221,7 @@ export default function Chat() {
                         {!minha && <p className="text-xs font-semibold mb-1 opacity-70">{m.autor_nome ?? "Usuário"}</p>}
                         <p className="text-sm">{m.conteudo}</p>
                         <p className={`text-xs mt-1 opacity-60 ${minha ? "text-right" : ""}`}>
-                          {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(m.created_at).toLocaleTimeString(appLocale(), { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                     </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { appLocale } from "@/i18n";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useGetConsumoHorario, getGetConsumoHorarioQueryKey, useListEmpresas, getListEmpresasQueryKey } from "@workspace/api-client-react";
@@ -48,11 +49,11 @@ export default function Consumo() {
   });
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    return new Intl.NumberFormat(appLocale(), { style: 'currency', currency: 'BRL' }).format(value);
   };
 
   const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(value);
+    return new Intl.NumberFormat(appLocale(), { maximumFractionDigits: 3 }).format(value);
   };
 
   const resetFilters = () => {
@@ -206,7 +207,7 @@ export default function Consumo() {
               consumo?.registros.map((registro) => (
                 <TableRow key={registro.id} className="text-sm">
                   <TableCell>
-                    <div className="font-medium">{format(parseISO(registro.data), 'dd/MM/yyyy')}</div>
+                    <div className="font-medium">{format(parseISO(registro.data), appLocale() === "pt-BR" ? "dd/MM/yyyy" : "MM/dd/yyyy")}</div>
                     <div className="text-xs text-muted-foreground">{registro.hora}</div>
                   </TableCell>
                   <TableCell className="font-medium">{registro.nome_empresa}</TableCell>

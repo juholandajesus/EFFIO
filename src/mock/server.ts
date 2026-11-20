@@ -4,7 +4,7 @@
  */
 import { criarSeed, type Db, type DbUsuario } from "./seed";
 
-const STORAGE_KEY = "effio_demo_db_v2";
+const STORAGE_KEY = "effio_demo_db_v3";
 let db: Db | null = null;
 
 function load(): Db {

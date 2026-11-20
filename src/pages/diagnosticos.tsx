@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { appLocale } from "@/i18n";
 import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ptBR, enUS } from "date-fns/locale";
 import { useGetDiagnostico, getGetDiagnosticoQueryKey, useListEmpresas, getListEmpresasQueryKey } from "@workspace/api-client-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,7 @@ export default function Diagnosticos() {
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return null;
     try {
-      return format(parseISO(dateStr), "dd 'de' MMMM, yyyy", { locale: ptBR });
+      return format(parseISO(dateStr), appLocale() === "pt-BR" ? "dd 'de' MMMM, yyyy" : "MMMM d, yyyy", { locale: appLocale() === "pt-BR" ? ptBR : enUS });
     } catch {
       return dateStr;
     }
@@ -80,8 +81,9 @@ export default function Diagnosticos() {
               <div>
                 <h3 className="font-semibold text-lg">Resumo do Período Analisado</h3>
                 <p className="text-muted-foreground text-sm">
-                  Baseado em {diagnostico.resumo.total_registros.toLocaleString('pt-BR')} registros 
-                  de {diagnostico.resumo.total_empresas} empresa(s).
+                  {appLocale() === "pt-BR"
+                    ? `Baseado em ${diagnostico.resumo.total_registros.toLocaleString("pt-BR")} registros de ${diagnostico.resumo.total_empresas} empresa(s).`
+                    : `Based on ${diagnostico.resumo.total_registros.toLocaleString("en-US")} records from ${diagnostico.resumo.total_empresas} company(ies).`}
                 </p>
               </div>
             </div>
@@ -89,7 +91,7 @@ export default function Diagnosticos() {
               <div className="text-right">
                 <div className="text-sm text-muted-foreground">Período</div>
                 <div className="font-medium text-lg">
-                  {format(parseISO(diagnostico.resumo.periodo_inicio), 'dd/MM/yyyy')} a {format(parseISO(diagnostico.resumo.periodo_fim), 'dd/MM/yyyy')}
+                  {format(parseISO(diagnostico.resumo.periodo_inicio), appLocale() === "pt-BR" ? "dd/MM/yyyy" : "MM/dd/yyyy")} a {format(parseISO(diagnostico.resumo.periodo_fim), appLocale() === "pt-BR" ? "dd/MM/yyyy" : "MM/dd/yyyy")}
                 </div>
               </div>
             )}

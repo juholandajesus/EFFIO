@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Link } from "wouter";
 import { Factory, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useT } from "@/i18n";
@@ -50,9 +49,6 @@ export function NoPlant() {
           <Factory className="h-10 w-10 text-muted-foreground" />
           <p className="font-semibold">{t("noplant.title")}</p>
           <p className="text-sm text-muted-foreground">{t("noplant.body")}</p>
-          <Link href="/integrations" className="text-sm font-medium text-primary hover:underline">
-            {t("noplant.cta")}
-          </Link>
         </CardContent>
       </Card>
     </div>

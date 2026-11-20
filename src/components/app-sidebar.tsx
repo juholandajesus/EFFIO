@@ -3,11 +3,10 @@ import {
   Zap, Building2, Upload, BarChart3, Activity, FileText,
   BatteryCharging, LayoutDashboard, GitMerge, LogOut,
   Building, Cpu, FileCheck, MessageSquare, UserCheck,
-  Factory, Boxes, Radar, Leaf, PlugZap,
+  Radar,
 } from "lucide-react";
 import { useT } from "@/i18n";
 import type { Dict } from "@/i18n/en";
-import { getPlant } from "@/industry/engine";
 
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -20,11 +19,7 @@ import { useAuth } from "@/context/auth-context";
 type NavItem = { title: keyof Dict; url: string; icon: React.ElementType };
 
 const AI_ITEMS: NavItem[] = [
-  { title: "nav.overview", url: "/overview", icon: Factory },
-  { title: "nav.production", url: "/production", icon: Boxes },
   { title: "nav.anomalies", url: "/anomalies", icon: Radar },
-  { title: "nav.carbon", url: "/carbon", icon: Leaf },
-  { title: "nav.integrations", url: "/integrations", icon: PlugZap },
 ];
 
 const ALWAYS_VISIBLE: NavItem[] = [
@@ -63,8 +58,6 @@ export function AppSidebar() {
   const { t } = useT();
 
   const noEmpresa = !empresaAtiva;
-  const country = getPlant(empresaAtiva?.id)?.plant.country ?? (empresaAtiva ? "BR" : null);
-  const isBrazil = country === "BR";
 
   const renderItems = (items: NavItem[]) =>
     items.map((item) => (
@@ -110,7 +103,7 @@ export function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
-        {(noEmpresa || (hasMercadoLivre && isBrazil)) && (
+        {(noEmpresa || hasMercadoLivre) && (
           <SidebarGroup>
             <SidebarGroupLabel className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Mercado Livre

@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { startDomTranslation, stopDomTranslation } from "./dom-translate";
 import { en, type Dict } from "./en";
 import { pt } from "./pt";
 
@@ -18,6 +19,13 @@ function initialLang(): Lang {
 
 type Vars = Record<string, string | number>;
 
+let currentLang: Lang = initialLang();
+
+/** Locale for number/date formatting in code that is not a React hook (legacy pages). */
+export function appLocale() {
+  return currentLang === "pt" ? "pt-BR" : "en-US";
+}
+
 interface I18nValue {
   lang: Lang;
   setLang: (l: Lang) => void;
@@ -29,9 +37,15 @@ const I18nContext = createContext<I18nValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(initialLang);
+  currentLang = lang;
 
   useEffect(() => {
     document.documentElement.lang = lang === "pt" ? "pt-BR" : "en";
+  }, [lang]);
+
+  useLayoutEffect(() => {
+    if (lang === "en") startDomTranslation();
+    else stopDomTranslation();
   }, [lang]);
 
   const setLang = useCallback((l: Lang) => {
@@ -80,4 +94,10 @@ export function LangToggle() {
       ))}
     </div>
   );
+}
+
+/** Re-mounts its children when the language changes, so every screen re-renders in the new language. */
+export function LangKeyed({ children }: { children: ReactNode }) {
+  const { lang } = useT();
+  return <div key={lang} className="contents">{children}</div>;
 }

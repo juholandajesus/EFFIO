@@ -8,7 +8,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Building2 } from "lucide-react";
-import { getPlant } from "@/industry/engine";
 import { useT } from "@/i18n";
 
 const PLANO_LABELS: Record<string, string> = {
@@ -59,7 +58,7 @@ export function EmpresaSelector() {
           {empresas?.map((e) => (
             <SelectItem key={e.id} value={String(e.id)}>
               <div className="flex flex-col">
-                <span className="font-medium">{getPlant(e.id)?.region.flag ?? "🇧🇷"} {e.razao_social}</span>
+                <span className="font-medium">{e.razao_social}</span>
                 <span className={`text-xs ${PLANO_COLORS[e.tipo_plano] ?? "text-muted-foreground"}`}>
                   {t("sel.plan")}: {PLANO_LABELS[e.tipo_plano] ? t(`plan.${e.tipo_plano}` as "plan.completo") : e.tipo_plano}
                 </span>
